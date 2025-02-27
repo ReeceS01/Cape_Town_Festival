@@ -1,0 +1,824 @@
+@using Cape_Town_Festival.Models
+@model List<EventViewModel>
+
+@{
+    ViewData["Title"] = "Manage Events";
+    var events = ViewBag.Events as List<EventViewModel>;
+    ViewData["HideFooter"] = true;
+}
+
+<div class="container mt-4">
+    <h1 class="mb-4 text-center">Manage Events</h1>
+
+
+   <!-- Status selectedCategory Buttons -->
+<div class="filter-container bg-light p-4 rounded mb-4">
+    <h3 class="text-center mb-3">Filter Events by Status</h3>
+    <div class="d-flex justify-content-center gap-2">
+        <button type="button" class="btn btn-primary status-btn" data-status="Online">
+            🟢 Online Events
+        </button>
+        <button type="button" class="btn btn-warning status-btn" data-status="Previous">
+            ⏪ Previous Events
+        </button>
+        <button type="button" class="btn btn-danger status-btn" data-status="Deleted">
+            🗑 Deleted Events
+        </button>
+        <button type="button" class="btn btn-dark" onclick="showAllEvents()">
+            📋 Show All
+        </button>
+    </div>
+</div>
+
+<!-- Flex Container for Sorting, Filtering & Add Event Button -->
+<div class="d-flex justify-content-between align-items-center flex-wrap mb-3 gap-2">
+    <!-- Add Event Button -->
+    <div class="d-flex justify-content-center mb-4">
+        <a href="/Admin/CreateEvent" class="btn btn-success btn-lg">
+            ➕ Add New Event
+        </a>
+    </div>
+    <!-- Search Bar -->
+    <input type="text" id="searchBar" class="form-control w-25" placeholder="🔎 Search event by name...">
+    <!-- Category Filter -->
+    <div>
+        <select id="categoryFilter" class="form-select">
+            <option value="">🔎 Filter by Category</option>
+            <option value="Music">🎵 Music</option>
+            <option value="Entertainment">🎭 Entertainment</option>
+            <option value="Sport">⚽ Sport</option>
+            <option value="Community">🤝 Community</option>
+            <option value="Culinary">🍲 Culinary</option>
+            <option value="Art">🎨 Art</option>
+            <option value="Family">👨‍👩‍👧‍👦 Family</option>
+        </select>
+    </div>
+</div>
+
+    <!-- Event Grid -->
+    <div class="event-grid">
+        <p id="noEventsMessage" style="display: none; color: red; text-align: center;">
+            ⚠️ No events match the selected filters!
+        </p>
+
+        @foreach (var eventItem in Model)
+        {
+            <div class="col-md-6 col-lg-6 event-card" 
+                data-event-id="@eventItem.EventID"
+                data-event-date="@eventItem.EventDate.ToDateTime().ToString("yyyy-MM-dd")"
+                data-seats-left="@eventItem.SeatsLeft"
+                data-category="@eventItem.EventCategory" 
+                data-name="@eventItem.EventName" 
+                data-status="@eventItem.Status">
+                
+                <div class="card shadow-sm">
+                    <!-- Status Badge -->
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="badge @GetCategoryBadgeClass(eventItem.EventCategory) p-2">
+                            @eventItem.EventCategory
+                        </h6>
+                        <span class="badge @GetStatusBadgeClass(eventItem.Status)">
+                            @eventItem.Status
+                        </span>
+                    </div>
+
+                <div class="card shadow-sm">
+                    <img src="@eventItem.EventImageURL" class="card-img-top event-image" alt="Event Image">
+                    <div class="card-body event-details">
+                        <h5 class="card-title text-center">@eventItem.EventName</h5>
+                        <p><strong>Category:</strong> @eventItem.EventCategory</p>
+                        <p><strong>Description:</strong> @eventItem.EventDescription</p>
+                        <p><strong>Event ID:</strong> @eventItem.EventID</p>
+                        <p><strong>Location:</strong> @eventItem.EventLocation</p>
+                        <p><strong>Max Attendees:</strong> @eventItem.EventMaxAttendees</p>
+                        <p><strong>Seats Left:</strong> @eventItem.SeatsLeft</p> <!-- 🔹 NEW -->
+                        <p><strong>Date:</strong> @eventItem.EventDate.ToDateTime().ToString("MMM dd, yyyy HH:mm")</p>
+                        <p><strong>Status:</strong> <span class="event-status">@eventItem.Status</span></p>
+
+                        <div class="event-actions">
+                            <a href="@Url.Action("EditEvent", "Admin", new { eventId = eventItem.EventID ?? 0 })" class="btn btn-warning">✏️ Edit</a>
+                            @if (eventItem.Status != "Deleted")
+                            {
+                                 <button class="btn btn-danger btn-delete" onclick="updateEventStatus(@eventItem.EventID)">
+                                    🗑️ Delete
+                                </button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-danger" disabled>
+                                    ⚠️ Event Already Deleted
+                                </button>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </div>
+        }
+    </div>
+</div>
+@section Scripts {
+    <script>
+        // ✅ Function to update event status to "Deleted"
+function deleteEvent(eventId) {
+    if (!confirm("Are you sure you want to delete this event? This action cannot be undone.")) {
+        return;
+    }
+
+    fetch('/Admin/DeleteEvent', { // ✅ Ensure the route matches your backend method
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ eventId: eventId }) // ✅ Ensure backend expects this format
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert("✅ Event deleted successfully!");
+            location.reload(); // ✅ Reload the page after deleting
+        } else {
+            alert("❌ Failed to delete event: " + (data.error || "Unknown error"));
+        }
+    })
+    .catch(error => {
+        console.error("Error:", error);
+        alert("❌ An error occurred while deleting the event.");
+    });
+}
+
+        // Function to filter events by status
+        function filterByStatus(status) {
+            console.log(`Filtering by status: ${status}`);
+            
+            updateFilterHeader(status);
+            updateSearchInfo(status);
+            
+            const cards = document.querySelectorAll('.event-card');
+            let visibleCount = 0;
+
+            cards.forEach(card => {
+                const eventStatus = card.getAttribute('data-status');
+                const eventId = card.querySelector('[data-event-id]')?.getAttribute('data-event-id');
+                const eventName = card.querySelector('.card-title').textContent;
+                
+                console.log(`Checking event ${eventId} (${eventName}) with status: ${eventStatus}`);
+                
+                if (status === 'all' || eventStatus === status) {
+                    card.style.display = 'block';
+                    visibleCount++;
+                    console.log(`✅ Showing event ${eventId}`);
+                } else {
+                    card.style.display = 'none';
+                    console.log(`❌ Hiding event ${eventId}`);
+                }
+            });
+
+            // Update button states
+            document.querySelectorAll('.status-btn').forEach(btn => {
+                if (btn.getAttribute('data-status') === status) {
+                    btn.classList.add('active', 'fw-bold');
+                } else {
+                    btn.classList.remove('active', 'fw-bold');
+                }
+            });
+
+            // Show/hide no events message
+            const noEventsMessage = document.getElementById('noEventsMessage');
+            if (noEventsMessage) {
+                noEventsMessage.style.display = visibleCount === 0 ? 'block' : 'none';
+            }
+            
+            console.log(`📊 Total visible events: ${visibleCount}`);
+        }
+
+        // Function to show all events
+        function showAllEvents() {
+            console.log('Showing all events');
+            
+            updateFilterHeader('all');
+            const cards = document.querySelectorAll('.event-card');
+            cards.forEach(card => {
+                card.style.display = 'block';
+            });
+            
+            // Reset button states
+            document.querySelectorAll('.status-btn').forEach(btn => {
+                btn.classList.remove('active', 'fw-bold');
+            });
+            
+            // Hide no events message
+            const noEventsMessage = document.getElementById('noEventsMessage');
+            if (noEventsMessage) {
+                noEventsMessage.style.display = 'none';
+            }
+
+            updateSearchInfo('all');
+        }
+
+
+        // Function to update search info
+        function updateSearchInfo(currentFilter) {
+            const searchInfo = document.getElementById('searchInfo');
+            if (searchInfo) {
+                const visibleCards = document.querySelectorAll('.event-card[style*="display: block"]');
+                searchInfo.innerHTML = `
+                    <div class="alert alert-info">
+                        <strong>Current Filter:</strong> ${currentFilter === 'all' ? 'All Events' : currentFilter} Events
+                        <br>
+                        <strong>Showing:</strong> ${visibleCards.length} events
+                    </div>
+                `;
+            }
+        }
+
+        // Function to update event status to deleted
+        function updateEventStatus(eventId) {
+    if (confirm("Are you sure you want to mark this event as deleted?")) {
+        fetch('/Admin/UpdateEventStatus', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                eventId: eventId, // ✅ Ensure eventId is passed correctly
+                status: 'Deleted' // ✅ Set Status to Deleted
+            })
+        })
+//test
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // ✅ Show success message
+                alert("✅ Event status updated to Deleted!");
+
+                // ✅ Reload page after a short delay
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+            } else {
+                alert("❌ Failed to update event status: " + (data.error || "Unknown error"));
+            }
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            alert("❌ An error occurred while updating the event status.");
+        });
+    }
+}
+        
+document.addEventListener('DOMContentLoaded', function () {
+    console.log("🚀 Page loaded, initializing...");
+
+    const eventCards = Array.from(document.querySelectorAll('.event-card'));
+    const categoryFilter = document.getElementById("categoryFilter");
+    const statusButtons = document.querySelectorAll('.status-btn');
+    const searchBar = document.getElementById("searchBar");
+
+    let currentStatus = "all"; // Default state: Show All
+
+    console.log(`Found ${eventCards.length} total events`);
+
+    // ✅ STATUS FILTERING (UPDATES TRANSPARENCY ON ACTIVE BUTTON)
+    statusButtons.forEach(button => {
+        button.addEventListener('click', function () {
+            let selectedStatus = this.getAttribute('data-status');
+
+            if (selectedStatus === "all") {
+                location.reload(); // ✅ RELOAD PAGE WHEN "SHOW ALL" IS CLICKED
+                return;
+            }
+
+            currentStatus = selectedStatus;
+            filterByStatus(currentStatus);
+            updateCategoryFilterOptions(currentStatus); // ✅ Update categories dynamically
+            updateButtonStyles(this); // ✅ Update button appearance
+        });
+    });
+
+    // ✅ CATEGORY FILTERING (ALSO TRIGGERS STATUS FILTER REFRESH)
+    categoryFilter.addEventListener("change", function () {
+        filterByStatus(currentStatus); // ✅ Reapply status filter first
+        filterByCategory(this.value); // ✅ Then filter by category
+    });
+
+    // ✅ SEARCH BAR FILTERING (EVENT NAME)
+    searchBar.addEventListener("input", function () {
+        filterBySearch(this.value.trim().toLowerCase());
+    });
+
+    // ✅ Show all events initially with correct button styles
+    showAllEvents();
+    updateButtonStyles(document.querySelector('.btn-dark')); // ✅ Ensure "Show All" starts as active
+    updateCategoryFilterOptions("all"); // ✅ Populate categories at load
+
+    // 🔹 FUNCTION: Filter by Status (Preserves Selected Category)
+    function filterByStatus(status) {
+        eventCards.forEach(event => {
+            let eventStatus = event.getAttribute("data-status");
+            event.style.display = (status === "all" || eventStatus === status) ? "block" : "none";
+        });
+
+        console.log(`✅ Status filter applied: ${status}`);
+
+        // ✅ If a category is already selected, reapply it after status is applied
+        if (categoryFilter.value) {
+            filterByCategory(categoryFilter.value);
+        }
+
+        // ✅ If a search term is active, reapply filtering
+        if (searchBar.value.trim()) {
+            filterBySearch(searchBar.value.trim().toLowerCase());
+        }
+    }
+
+    // 🔹 FUNCTION: Filter by Category (Only Filters Visible Events)
+    function filterByCategory(selectedCategory) {
+        eventCards.forEach(event => {
+            let category = event.getAttribute("data-category");
+            if (event.style.display !== "none") { // ✅ Only filter events currently visible
+                event.style.display = (selectedCategory === "" || category === selectedCategory) ? "block" : "none";
+            }
+        });
+
+        console.log(`✅ Category filter applied: ${selectedCategory}`);
+    }
+
+    // 🔹 FUNCTION: Filter by Search Term (Event Name)
+    function filterBySearch(searchTerm) {
+        eventCards.forEach(event => {
+            let eventName = event.querySelector(".card-title").textContent.toLowerCase();
+            if (event.style.display !== "none") { // ✅ Only filter events currently visible
+                event.style.display = eventName.includes(searchTerm) ? "block" : "none";
+            }
+        });
+
+        console.log(`✅ Search filter applied: ${searchTerm}`);
+    }
+
+    // 🔹 FUNCTION: Show All Events (Fixes "Show All" Not Working)
+    function showAllEvents() {
+        console.log('✅ Resetting filters - Showing all events');
+        
+        eventCards.forEach(event => {
+            event.style.display = "block"; // ✅ Make all events visible
+        });
+
+        // ✅ Reset all filters to their default state
+        currentStatus = "all";
+        categoryFilter.value = ""; // Reset category filter
+        searchBar.value = ""; // Reset search bar
+
+        // ✅ Reset button styles and make "Show All" the active one
+        updateButtonStyles(document.querySelector('.btn-dark'));
+        updateCategoryFilterOptions("all"); // ✅ Refresh category filter
+    }
+
+    // 🔹 FUNCTION: Update Button Styles (Dimming Active Status)
+    function updateButtonStyles(activeButton) {
+        statusButtons.forEach(button => {
+            if (button === activeButton) {
+                button.style.opacity = "1"; // ✅ Selected button is fully bright
+            } else {
+                button.style.opacity = "0.5"; // ✅ Other buttons are dimmed
+            }
+        });
+    }
+
+    // 🔹 FUNCTION: Update Category Filter Dynamically
+    function updateCategoryFilterOptions(selectedStatus) {
+        let categories = new Set();
+
+        // ✅ Collect categories based on currently visible events
+        eventCards.forEach(event => {
+            let eventStatus = event.getAttribute("data-status");
+            let category = event.getAttribute("data-category");
+
+            if ((selectedStatus === "all" || eventStatus === selectedStatus) && category) {
+                categories.add(category);
+            }
+        });
+
+        // ✅ Update the dropdown menu
+        categoryFilter.innerHTML = `<option value="">🔎 Filter by Category</option>`; // Default option
+        categories.forEach(category => {
+            let option = document.createElement("option");
+            option.value = category;
+            option.innerHTML = getCategoryEmoji(category) + " " + category; // ✅ Add emoji dynamically
+            categoryFilter.appendChild(option);
+        });
+
+        console.log(`✅ Updated category filter for status: ${selectedStatus}, Categories: ${[...categories].join(", ")}`);
+    }
+
+    // 🔹 FUNCTION: Get Category Emoji (Matches UI)
+    function getCategoryEmoji(category) {
+        const emojiMap = {
+            "Music": "🎵",
+            "Entertainment": "🎭",
+            "Sport": "⚽",
+            "Community": "🤝",
+            "Culinary": "🍲",
+            "Art": "🎨",
+            "Family": "👨‍👩‍👧‍👦"
+        };
+        return emojiMap[category] || "🔹"; // Default emoji if category not mapped
+    }
+
+    // ✅ Ensure "Show All" works correctly when clicked
+    document.querySelector('.btn-dark').addEventListener('click', function () {
+        showAllEvents();
+    });
+});
+</script>
+}
+@section Styles{
+<style>
+
+    .status-btn.active {
+            transform: scale(1.05);
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        }
+
+        .btn {
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .event-card {
+            transition: all 0.3s ease;
+        }
+
+        #filterStatus {
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+
+    /* Default: All buttons dimmed except 'Show All' */
+.status-btn {
+    opacity: 0.5; 
+    transition: opacity 0.3s ease-in-out;
+}
+
+/* Active (Selected) Button: Full Opacity */
+.status-btn.active {
+    opacity: 1;
+}
+
+    /* Specific Colors for Each Status */
+    .status-btn[data-status="Online"] {
+        background-color: #4dc05a !important; /* Green */
+        border-color: #4dc05a !important;
+    }
+
+    .status-btn[data-status="Previous"] {
+        background-color: #fb7508 !important; /* Orange */
+        border-color: #fb7508 !important;
+    }
+
+    .status-btn[data-status="Deleted"] {
+        background-color: #c71527 !important; /* Red */
+        border-color: #c71527 !important;
+    }
+
+    .status-btn[data-status="all"] {
+        background-color: #333 !important; /* Dark */
+        border-color: #333 !important;
+    }
+    
+    .status-btn.active {
+        transform: scale(1.05);
+        box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    }
+
+    .btn {
+        transition: all 0.3s ease;
+    }
+
+    .btn:hover {
+        transform: translateY(-2px);
+    }
+
+    .event-card {
+        transition: all 0.3s ease;
+    }
+
+    #searchInfo {
+        margin: 20px 0;
+    }
+
+
+ /* ✅ GENERAL PAGE STYLING */
+.container {
+    max-width: 1400px;
+    margin: auto;
+    padding: 20px;
+}
+
+/* ✅ PAGE TITLE */
+h1 {
+    font-size: 36px;
+    font-weight: bold;
+    color: #000000;
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+/* ✅ SEARCH & FILTER CONTAINER */
+.search-filter-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.search-bar {
+    width: 40%;
+    padding: 12px;
+    font-size: 18px;
+    border: 2px solid #0d47a1;
+    border-radius: 8px;
+    outline: none;
+    transition: 0.3s;
+}
+
+.search-bar:focus {
+    border-color: #1565c0;
+    box-shadow: 0 0 5px rgba(13, 71, 161, 0.5);
+}
+
+.filter-button {
+    background-color: #0d47a1;
+    color: white;
+    font-size: 18px;
+    padding: 12px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.filter-button:hover {
+    background-color: #1565c0;
+}
+
+/* ✅ VISIBILITY FILTER */
+.filter-container {
+    text-align: center;
+    background-color: #e3f2fd;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.filter-container h3 {
+    font-size: 24px;
+    color: #0d47a1;
+    margin-bottom: 15px;
+}
+
+.checkbox-group {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+
+.styled-checkbox:hover {
+    background: #bbdefb;
+}
+
+/* ✅ EVENT GRID (2-CARD LAYOUT) */
+.event-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* Ensures 2 cards per row */
+    gap: 30px;
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* ✅ Large Screens: Keep 2 Cards Per Row */
+@@media (min-width: 1025px) {
+    .event-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* ✅ Tablets: Show 1 Card Per Row */
+@@media (max-width: 1024px) {
+    .event-grid {
+        grid-template-columns: 1fr; /* ✅ Single column for tablets */
+        padding: 15px;
+    }
+}
+
+/* ✅ Phones: Show 1 Card Per Row */
+@@media (max-width: 768px) {
+    .event-grid {
+        grid-template-columns: 1fr; /* ✅ Single column for mobile */
+        padding: 10px;
+    }
+    }
+
+/* ✅ EVENT CARD STYLING */
+.event-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    overflow: hidden;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.event-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+/* ✅ Uniform Image Size */
+.card-img-top {
+    width: 100%; 
+    height: 250px; /* Set fixed height for all images */
+    object-fit: cover; /* Ensures no stretching */
+    border-radius: 12px 12px 0 0; /* Rounded top corners */
+}
+
+/* ✅ EVENT DETAILS */
+.event-details {
+    padding: 20px;
+    text-align: center;
+}
+
+.event-details h3 {
+    font-size: 22px;
+    color: #0d47a1;
+    margin-bottom: 10px;
+}
+
+.event-category {
+    font-size: 16px;
+    color: #555;
+    font-weight: bold;
+}
+
+.event-location,
+.event-date,
+.event-seats {
+    font-size: 15px;
+    color: #666;
+    margin: 6px 0;
+}
+
+/* ✅ SEATS LEFT - COLOR CHANGES TO RED IF 0 */
+.seats-left {
+    font-weight: bold;
+    transition: 0.3s;
+}
+
+.seats-left.zero {
+    color: red;
+}
+
+/* ✅ BUTTON STYLING */
+.event-actions {
+    display: flex;
+    justify-content: space-between;
+    padding: 15px;
+}
+
+/* ✅ Edit & Delete Buttons */
+.btn-edit, .btn-delete {
+    padding: 10px 16px;
+    font-size: 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    width: 48%;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+
+/* ✅ EDIT BUTTON */
+.btn-edit {
+    background-color: #ff9800;
+    color: white;
+    border: none;
+}
+
+.btn-edit:hover {
+    background-color: #f57c00;
+}
+
+/* ✅ DELETE BUTTON */
+.btn-delete {
+    background-color: #d32f2f;
+    color: white;
+    border: none;
+}
+
+.btn-delete:hover {
+    background-color: #b71c1c;
+}
+
+
+@@media (max-width: 768px) {
+    .event-actions {
+        flex-direction: column; /* Stack buttons vertically */
+        align-items: center;
+    }
+
+    .event-actions .btn {
+        width: 90%; /* Make buttons take full width on small screens */
+        max-width: none;
+    }
+}
+
+/* ✅ MODAL STYLING */
+.modal-content {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    max-width: 400px;
+    margin: auto;
+}
+
+.seats-left {
+    font-weight: bold;
+    transition: 0.3s;
+}
+
+.seats-left.zero {
+    color: red;
+}
+
+.d-flex {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px; /* Adds spacing between elements */
+}
+
+.dropdown button {
+    min-width: 160px; /* Ensures dropdown buttons are the same width */
+}
+
+#categoryFilter {
+    min-width: 200px; /* Ensures the category filter is readable */
+}
+
+.btn-success {
+    white-space: nowrap; /* Prevents the button from breaking into two lines */
+}
+
+/* ✅ Status Badges */
+.badge-online { background-color: #28a745 !important; color: white; }  /* Green */
+.badge-previous { background-color: #fd7e14 !important; color: white; } /* Orange */
+.badge-deleted { background-color: #dc3545 !important; color: white; }  /* Red */
+
+/* ✅ Category Badges */
+.badge-music { background-color: #007bff !important; color: white; } /* Blue */
+.badge-entertainment { background-color: #6f42c1 !important; color: white; } /* Purple */
+.badge-sport { background-color: #17a2b8 !important; color: white; } /* Cyan */
+.badge-community { background-color: #ffc107 !important; color: black; } /* Yellow */
+.badge-culinary { background-color: #fd7e14 !important; color: white; } /* Orange */
+.badge-art { background-color: #e83e8c !important; color: white; } /* Pink */
+.badge-family { background-color: #20c997 !important; color: white; } /* Teal */
+
+</style>
+}
+@functions {
+    public string GetStatusBadgeClass(string status)
+    {
+        return status switch
+        {
+            "Online" => "badge-online",
+            "Previous" => "badge-previous",
+            "Deleted" => "badge-deleted",
+            _ => "badge-secondary"
+        };
+    }
+
+    public string GetCategoryBadgeClass(string category)
+    {
+        return category switch
+        {
+            "Music" => "badge-music",
+            "Entertainment" => "badge-entertainment",
+            "Sport" => "badge-sport",
+            "Community" => "badge-community",
+            "Culinary" => "badge-culinary",
+            "Art" => "badge-art",
+            "Family" => "badge-family",
+            _ => "badge-secondary"
+        };
+    }
+}

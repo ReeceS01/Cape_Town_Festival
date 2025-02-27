@@ -1,0 +1,163 @@
+@{
+    ViewData["Title"] = "Edit Account";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+      ViewData["HideFooter"] = true;
+}
+
+<div class="edit-account-container">
+    
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success">
+            @TempData["SuccessMessage"]
+        </div>
+    }
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger">
+            @TempData["ErrorMessage"]
+        </div>
+    }
+
+    <div class="form-container">
+        <form method="post" action="/Account/EditAccount">
+         <h1>Edit Your Account</h1>
+            <div class="form-group">
+                <label for="firstName">First Name:</label>
+                <input type="text" id="firstName" name="firstName" value="@ViewBag.FirstName" required class="form-control" />
+            </div>
+
+            <div class="form-group">
+                <label for="lastName">Last Name:</label>
+                <input type="text" id="lastName" name="lastName" value="@ViewBag.LastName" required class="form-control" />
+            </div>
+
+            <div class="form-group">
+                <label for="gender">Gender:</label>
+                @Html.DropDownList("gender", new List<SelectListItem>
+                {
+                    new SelectListItem { Text = "Male", Value = "Male", Selected = (ViewBag.Gender == "Male") },
+                    new SelectListItem { Text = "Female", Value = "Female", Selected = (ViewBag.Gender == "Female") },
+                    new SelectListItem { Text = "Other", Value = "Other", Selected = (ViewBag.Gender == "Other") }
+                }, new { @class = "form-control", required = "required" })
+            </div>
+
+            <div class="btn-group">
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <button type="button" onclick="location.href='/Account/AccountHome'" class="btn btn-secondary">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Styles {
+<style>
+    /* ✅ Background Image */
+    body {
+        background: url('/images/TableMount.jpeg') no-repeat center center fixed;
+        background-size: cover;
+    
+    }
+
+    /* ✅ Center Everything */
+    .edit-account-container {
+        text-align: center;
+        width: 100%;
+        max-width: 600px;
+        margin: auto;
+        padding: 20px;
+    }
+
+    /* ✅ White Container with 80% Opacity */
+    .form-container {
+        background: rgba(255, 255, 255, 0.8);
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        text-align: center;
+        max-width: 500px;
+        margin: auto;
+    }
+
+    /* ✅ Form Styling */
+    .form-group {
+        margin-bottom: 15px;
+        text-align: left;
+    }
+
+    .form-group label {
+        font-weight: bold;
+        display: block;
+        margin-bottom: 5px;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        font-size: 16px;
+    }
+
+    /* ✅ Button Styling */
+    .btn-group {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 20px;
+    }
+
+    .btn {
+        padding: 10px 15px;
+        font-size: 16px;
+        border: none;
+        cursor: pointer;
+        border-radius: 5px;
+    }
+
+    .btn-primary {
+        background-color: #007bff;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background-color: #0056b3;
+    }
+
+    .btn-secondary {
+        background-color: #6c757d;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background-color: #545b62;
+    }
+
+    /* ✅ Alert Styling */
+    .alert {
+        padding: 10px;
+        margin-bottom: 15px;
+        border-radius: 5px;
+    }
+
+    .alert-success {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+
+    .alert-danger {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+    .navbar {
+    position: fixed; /* Keep it at the top */
+    top: 0;
+    left: 0;
+    width: 100%;
+    }
+</style>
+}

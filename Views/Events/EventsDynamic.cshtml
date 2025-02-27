@@ -1,0 +1,643 @@
+@using Cape_Town_Festival.Models
+
+@{
+    ViewData["Title"] = "All Events";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var events = ViewBag.Events as List<Dictionary<string, object>>;
+}
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<link rel="stylesheet" href="~/css/EventsDynamic.css" asp-append-version="true" />
+
+<div class="filter-sidebar">
+    <!-- Category Filter -->
+    <div class="filter-section">
+        <h3>Category</h3>
+       <select id="categoryFilter" onchange="updateTitleAndFilter()" class="filter-dropdown">
+            <option value="All">All Categories</option>
+            <option value="Music">Music</option>
+            <option value="Culinary">Culinary</option>
+            <option value="Art">Art</option>
+            <option value="Entertainment">Entertainment</option>
+            <option value="Family">Family</option>
+            <option value="Sport">Sport</option>
+            <option value="Community">Community</option>
+        </select>
+    </div>
+
+    <!-- Star Rating Slider -->
+    <div class="filter-section">
+        <h3>Minimum Star Rating</h3>
+        <input type="range" id="ratingSlider" min="0" max="5" value="0" step="0.5" oninput="updateRatingFilter(this.value)">
+        <p><strong>Showing events with:</strong> <span id="ratingLabel">0+</span> ⭐</p>
+    </div>
+
+    <!-- Sort Filter -->
+    <div class="filter-section">
+        <h3>Sort By</h3>
+        <select id="sortFilter" onchange="sortEvents()" class="filter-dropdown">
+            <option value="date" selected>🗓 Soonest to Latest</option>
+            <option value="popularity">⭐ Highest Rated</option>
+            <option value="availability">🎟 Most Seats Available</option>
+        </select>
+    </div>
+    <div id="no-events-message" class="no-events-hidden">
+    <h2 class="no-events-text">🚨 Please Reset Your Filtering Requirements! 🚨</h2>
+    <button onclick="resetFilters()" class="btn-reset">Reset Filters</button>
+</div>
+</div>
+
+<h1 id="pageTitle">All Events</h1>
+<div class="event-wrapper">
+<div class="event-grid">
+    @foreach (var eventItem in events)
+    {
+        // Ensure event is "Online" before displaying
+        if (!eventItem.ContainsKey("Status") || eventItem["Status"].ToString() != "Online") continue;
+
+        var eventRatings = Convert.ToDouble(eventItem["EventRatings"]); 
+        var maxAttendees = Convert.ToInt32(eventItem["EventMaxAttendees"]); 
+        var rsvps = eventItem.ContainsKey("EventRSVPs") ? Convert.ToInt32(eventItem["EventRSVPs"]) : 0;
+        var seatsLeft = maxAttendees - rsvps;
+        var eventDate = ((Google.Cloud.Firestore.Timestamp)eventItem["EventDate"]).ToDateTime().ToLocalTime();
+        var displayDate = eventDate.ToString("dddd, dd MMMM yyyy h:mm tt");
+
+        // Get weather information if available
+        var hasWeather = eventItem.ContainsKey("Weather") && eventItem["Weather"] != null;
+        string weatherTemp = "N/A";
+        string weatherDesc = "Weather unavailable";
+        string weatherIcon = "";
+
+        // Extract weather data from the Dictionary
+            if (hasWeather)
+            {
+                var weatherData = eventItem["Weather"] as Dictionary<string, object>;
+                if (weatherData != null)
+                {
+                    weatherTemp = weatherData.ContainsKey("Temperature") ? weatherData["Temperature"].ToString() : "N/A";
+                    weatherDesc = weatherData.ContainsKey("Description") ? weatherData["Description"].ToString() : "Weather unavailable";
+                    weatherIcon = weatherData.ContainsKey("IconUrl") ? weatherData["IconUrl"].ToString() : "";
+                }
+            }
+
+        <div class="event-card" 
+             data-category="@eventItem["EventCategory"]" 
+             data-date="@eventDate.Ticks" 
+             data-popularity="@eventRatings"
+             data-availability="@seatsLeft">
+             
+            <div class="event-image-container">
+                <img src="@eventItem["EventImageURL"]" alt="@eventItem["EventName"]" class="event-image">
+                <span class="event-category">@eventItem["EventCategory"]</span>
+
+                <!--  Weather Icon in top-right corner -->
+                @if (hasWeather && !string.IsNullOrEmpty(weatherIcon))
+                {
+                    <div class="event-weather">
+                        <img src="@weatherIcon" alt="@weatherDesc" class="weather-icon" />
+                        <span class="weather-temp">@weatherTemp°C</span>
+                    </div>
+                }
+            </div>
+            
+            <h2>@eventItem["EventName"]</h2>
+            
+
+            <p><strong>Start Date:</strong> @displayDate</p>
+            <p><strong>Description:</strong> @eventItem["EventDescription"]</p>
+
+            
+
+          <p><strong>Event Capacity:</strong> 
+            <span class="seats @(seatsLeft <= 5 ? "low-seats" : "available-seats")">
+                @(seatsLeft > 0 ? seatsLeft : "Fully Booked")
+            </span>
+        </p>
+
+        
+            <div class="star-rating">
+                @{
+                    int fullStars = (int)eventRatings; 
+                    bool hasHalfStar = eventRatings - fullStars >= 0.5; 
+                }
+
+                @for (int i = 1; i <= 5; i++)
+                {
+                    if (i <= fullStars)
+                    {
+                        <span class="star">&#9733;</span> 
+                    }
+                    else if (hasHalfStar && i == fullStars + 1)
+                    {
+                        <span class="star half">&#9733;</span> 
+                        hasHalfStar = false; 
+                    }
+                    else
+                    {
+                        <span class="star empty">&#9733;</span> 
+                    }
+                }
+                <span class="rating-text">(@eventRatings / 5)</span>
+            </div>
+
+            <div class="event-buttons">
+                    <a href="https://maps.google.com/?q=@eventItem["EventLocation"]" target="_blank" class="btn-map">View on Map</a>
+                    <a href="@Url.Action("LearnMore", "Events", new { eventId = eventItem["EventID"].ToString().Trim() })" class="btn-learn-more">Learn More</a>
+                    <a href="@Url.Action("Form", "RSVP", new { 
+                                    eventId = eventItem["EventID"],
+                                    eventName = eventItem["EventName"],
+                                    startDate = eventDate.ToString("yyyy-MM-dd HH:mm:ss"),
+                                    category = eventItem["EventCategory"],
+                                    location = eventItem["EventLocation"]
+                                })" class="btn-rsvp">RSVP</a>
+            </div>
+            <!-- Add weather description -->
+            @if (hasWeather)
+            {
+                <p class="weather-info">
+                    <strong>Weather:</strong> @weatherDesc, @weatherTemp°C
+                </p>
+            }
+        </div>
+    }
+</div>
+</div>
+
+
+@section Scripts{
+<script>
+
+
+    document.addEventListener("DOMContentLoaded", function() {
+    sortEvents(); // Automatically sort events by soonest date when page loads
+});
+
+
+function sortEvents() {
+    let sortBy = document.getElementById("sortFilter").value;
+    let eventsContainer = document.querySelector(".event-grid");
+    let events = Array.from(document.querySelectorAll(".event-card"));
+
+    events.sort((a, b) => {
+        if (sortBy === "date") {
+            return parseInt(a.getAttribute("data-date")) - parseInt(b.getAttribute("data-date")); // Soonest first
+        } else if (sortBy === "popularity") {
+            return parseFloat(b.getAttribute("data-popularity")) - parseFloat(a.getAttribute("data-popularity")); // Highest rated first
+        } else if (sortBy === "availability") {
+            return parseInt(b.getAttribute("data-availability")) - parseInt(a.getAttribute("data-availability")); // Most seats first
+        }
+    });
+
+    events.forEach(event => eventsContainer.appendChild(event));
+}
+
+
+function selectCategory(category) {
+    document.querySelectorAll(".category-list a").forEach(link => {
+        link.classList.remove("active"); // Remove highlight
+    });
+
+    event.target.classList.add("active"); // Highlight selected category
+
+    let events = document.querySelectorAll(".event-card");
+    events.forEach(event => {
+        let eventCategory = event.getAttribute("data-category");
+        event.style.display = (category === "All" || eventCategory === category) ? "block" : "none";
+    });
+}
+
+function updateTitleAndFilter() {
+    let category = document.getElementById("categoryFilter").value;
+    let pageTitle = document.getElementById("pageTitle");
+
+    // Update Title
+    pageTitle.innerText = category === "All" ? "All Events" : category + " Events";
+
+    filterEvents(); // Apply filtering when category changes
+}
+
+function filterEvents() {
+    let searchText = document.getElementById("searchInput") ? document.getElementById("searchInput").value.toLowerCase() : "";
+    let category = document.getElementById("categoryFilter").value;
+    let minRating = parseFloat(document.getElementById("ratingSlider").value);
+    let events = document.querySelectorAll(".event-card");
+    let hasVisibleEvents = false;
+
+    events.forEach(event => {
+        let eventName = event.querySelector("h2").innerText.toLowerCase();
+        let eventCategory = event.getAttribute("data-category");
+        let eventRating = parseFloat(event.getAttribute("data-popularity"));
+
+        let matchesSearch = eventName.includes(searchText);
+        let matchesCategory = (category === "All" || eventCategory === category);
+        let matchesRating = (eventRating >= minRating);
+
+        let shouldShow = matchesSearch && matchesCategory && matchesRating;
+        event.style.display = shouldShow ? "block" : "none";
+
+        if (shouldShow) {
+            hasVisibleEvents = true;
+        }
+    });
+
+    // Show the "No Events Found" message if nothing is visible
+    document.getElementById("no-events-message").style.display = hasVisibleEvents ? "none" : "block";
+}
+// Update Star Rating Label & Apply Filter
+function updateRatingFilter(value) {
+    document.getElementById("ratingLabel").innerText = `${value}+`;
+    filterEvents();
+}
+
+
+// Reload Page to Reset Filters
+function resetFilters() {
+    location.reload(); // Simply reloads the page to reset all filters
+}
+
+</script>
+}
+
+@section Styles{ 
+<style>
+/* --------------------------- */
+/*      ALL EVENTS HEADER      */
+/* --------------------------- */
+#pageTitle {
+    text-align: center;
+    font-size: 2.5rem; /* Bigger title */
+    font-weight: bold;
+    margin-top: 40px; /* Adds space from navbar */
+    margin-bottom: 30px; /* Adds space above event grid */
+    padding: 10px 0; /* Extra padding for breathing room */
+}
+
+/* --------------------------- */
+/*          SIDEBAR            */
+/* --------------------------- */
+.filter-sidebar {
+    width: 280px;
+    background: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    position: fixed;
+    left: 30px;
+    top: 100px;
+    height: auto;
+}
+
+/* Sidebar Sections */
+.filter-section {
+    margin-bottom: 25px;
+}
+
+.filter-section h3 {
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 12px;
+}
+
+/* Dropdown Filters */
+.filter-dropdown {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.filter-dropdown:hover {
+    border-color: #007bff;
+}
+
+/* Star Rating Slider */
+input[type="range"] {
+    width: 100%;
+    margin-top: 10px;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    background: #ddd;
+    outline: none;
+    opacity: 0.9;
+    transition: opacity 0.2s;
+    border-radius: 5px;
+}
+
+input[type="range"]:hover {
+    opacity: 1;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    background: #007bff;
+    cursor: pointer;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0px 0px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* --------------------------- */
+/*        EVENT GRID           */
+/* --------------------------- */
+/* Default: Desktop (3 Cards Per Row) */
+.event-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    max-width: 1400px; 
+    margin: auto;
+    padding: 20px;
+}
+
+/* ✅ Hide Sidebar (Filters) on Tablets & Phones */
+@@media (max-width: 1024px) { /* ✅ iPad & Mobile */
+    .filter-sidebar {
+        display: none;
+    }
+}
+
+/* ✅ Phones: Show 1 Card Per Row */
+@@media (max-width: 768px) {
+    .event-grid {
+        grid-template-columns: 1fr; /* ✅ Single column for small screens */
+        padding: 10px;
+    }
+}
+
+/* ✅ Tablets: Show 2 Cards Per Row */
+@@media (max-width: 1024px) {
+    .event-grid {
+        grid-template-columns: repeat(2, 1fr);
+        padding: 15px;
+    }
+}
+
+/* ✅ Phones: Show 1 Card Per Row */
+@@media (max-width: 768px) {
+    .event-grid {
+        grid-template-columns: 1fr; /* Single column for small screens */
+        padding: 10px;
+    }
+}
+
+/* --------------------------- */
+/*        EVENT CARDS          */
+/* --------------------------- */
+.event-card {
+    background: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    width: 100%; /* Make width dynamic */
+    max-width: 500px; /* Prevent it from being too wide */
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    margin: auto; /* Centers card */
+}
+
+.event-card:hover {
+    transform: translateY(-5px);
+}
+
+/* Event Image */
+.event-image-container {
+    position: relative;
+}
+
+.event-image {
+    width: 100%;
+    height: 280px; /* Bigger image size */
+    object-fit: cover;
+    border-radius: 10px 10px 0 0;
+}
+/* --------------------------- */
+/*       EVENT TEXT STYLES     */
+/* --------------------------- */
+.event-card h3 {
+    font-size: 1.8rem;
+    margin-top: 10px;
+}
+
+.event-card p {
+    margin: 5px 0;
+    color: #555;
+}
+/* --------------------------- */
+/*        BUTTON STYLES        */
+/* --------------------------- */
+.event-buttons {
+    margin-top: auto; /* Pushes buttons to bottom */
+    text-align: center;
+    display: flex;
+    justify-content: space-between; /* Ensures buttons are evenly spaced */
+    gap: 10px;
+}
+
+/* INDIVIDUAL BUTTONS */
+.btn-map, .btn-rsvp,.btn-learn-more{
+    display: inline-block;  /* Ensures side-by-side layout */
+    padding: 10px 15px;
+    margin: 5px;  /* Even spacing */
+    border-radius: 5px;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1rem;
+    min-width: 100px;  /* Prevents small button shrinkage */
+}
+
+/* MAP BUTTON (BLUE) */
+.btn-map {
+    background-color: #007bff;
+    color: white;
+    border: 2px solid #007bff;
+    transition: background 0.3s ease-in-out, border 0.3s ease-in-out;
+}
+
+.btn-map:hover {
+    background-color: #0056b3;
+    border-color: #0056b3;
+}
+
+/* RSVP Button (Green when available) */
+.btn-rsvp {
+    background-color: #28a745;
+    color: white;
+    border: 2px solid #28a745;
+    padding: 10px 15px;
+    border-radius: 5px;
+    text-align: center;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1rem;
+    display: block;
+    width: 100%;
+}
+
+.btn-rsvp:hover {
+    background-color: #1e7e34;
+    border-color: #1e7e34;
+}
+
+
+.btn-learn-more {
+    background-color: #ff8c00; /* Orange color */
+    color: white;
+    padding: 10px 15px;
+    border-radius: 5px;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1rem;
+    display: block;
+    text-align: center;
+    transition: 0.3s;
+}
+
+.btn-learn-more:hover {
+    background-color: #e07b00;
+}
+
+/* --------------------------- */
+/*       STAR RATINGS          */
+/* --------------------------- */
+.star-rating {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: gold;
+    width: 100%;
+    text-align: center;
+}
+
+.star {
+    color: gold;
+    font-size: 24px;
+    position: relative;
+}
+
+.star.empty {
+    color: lightgray;
+}
+
+.star.half {
+    position: relative;
+    display: inline-block;
+    width: 12px;
+    overflow: hidden;
+}
+
+.star.half::before {
+    content: "\2605";
+    position: absolute;
+    left: 0;
+    width: 50%;
+    color: gold;
+    overflow: hidden;
+}
+
+.rating-text {
+    font-size: 16px;
+    margin-left: 5px;
+    color: #555;
+}
+
+/* --------------------------- */
+/*        EVENT LABELS         */
+/* --------------------------- */
+.event-category {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: #ff6b6b;
+    color: white;
+    padding: 6px 12px;
+    font-size: 14px;
+    border-radius: 5px;
+}
+
+
+/* --------------------------- */
+/*    NO EVENTS MESSAGE        */
+/* --------------------------- */
+.no-events-hidden {
+    display: none;
+    text-align: center;
+    margin-top: 50px;
+}
+
+.no-events-text {
+    color: red;
+    font-size: 22px;
+    font-weight: bold;
+    margin: 20px 0;
+}
+
+/* Reset Button */
+.btn-reset {
+    background: red;
+    color: white;
+    font-size: 18px;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.btn-reset:hover {
+    background: darkred;
+}
+
+
+
+
+
+.event-weather {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 8px;
+    padding: 5px 10px;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.weather-icon {
+    width: 40px;
+    height: 40px;
+}
+
+.weather-temp {
+    font-weight: bold;
+    margin-left: 5px;
+    color: #333;
+}
+
+.weather-info {
+    background-color: #f8f9fa;
+    padding: 8px 12px;
+    border-radius: 5px;
+    margin: 10px 0;
+    border-left: 4px solid #007bff;
+}
+
+
+.event-wrapper {
+    max-width: 1300px;
+    margin: auto;
+    padding: 20px;
+}
+</style>
+}

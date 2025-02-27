@@ -1,0 +1,209 @@
+@using Cape_Town_Festival.Models
+@model EventViewModel
+
+@{
+    ViewData["Title"] = "Edit Event";
+    ViewData["HideFooter"] = true;
+}
+
+@if (Model == null)
+{
+    <h2>❌ Event Not Found</h2>
+    <p>The event you are trying to edit does not exist or has been deleted.</p>
+    <a href="@Url.Action("AdminEventsManagement", "Admin")" class="btn btn-primary">Return to Admin Events Management</a>
+}
+else
+{
+    <div class="container mt-4">
+        <h2 class="text-center mb-4">Edit Event</h2>
+
+      <!-- Event Image Section -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h3 class="card-title">Event Image</h3>
+    </div>
+    <div class="card-body text-center">
+        <img src="@Model.EventImageURL" alt="Event Image" class="event-image mb-3" style="max-width: 300px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);" />
+        <p class="text-muted">Current Image URL: @Model.EventImageURL</p>
+        
+        <!-- 🔹 Change Image Form -->
+        <form asp-action="UpdateEventImage" asp-controller="Admin" method="post" enctype="multipart/form-data">
+            <input type="hidden" name="eventId" value="@Model.EventID" />
+            <div class="mb-3">
+                <input type="file" name="eventImage" class="form-control" accept="image/*" required />
+            </div>
+            <button type="submit" class="btn btn-primary">📸 Change Image</button>
+        </form>
+    </div>
+</div>
+
+        <!-- Event Details Form -->
+        <form id="editEventForm" asp-action="UpdateEventDetails" asp-controller="Admin" method="post">
+            <input type="hidden" asp-for="EventID" />
+            <input type="hidden" asp-for="EventImageURL" />
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Event Details</h3>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label>Event Name:</label>
+                        <input type="text" asp-for="EventName" class="form-control" required />
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Category:</label>
+                        <select asp-for="EventCategory" class="form-control">
+                            <option value="Music">Music</option>
+                            <option value="Culinary">Culinary</option>
+                            <option value="Art">Art</option>
+                            <option value="Entertainment">Entertainment</option>
+                            <option value="Family">Family</option>
+                            <option value="Sport">Sport</option>
+                            <option value="Community">Community</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Description:</label>
+                        <textarea asp-for="EventDescription" class="form-control" required></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Location:</label>
+                        <input type="text" asp-for="EventLocation" class="form-control" required />
+                    </div>
+
+                    <!-- Latitude & Longitude Input -->
+                    <div class="mb-3">
+                        <label>Coordinates (Latitude/Longitude):</label>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <input type="number" id="latitude" name="Latitude" class="form-control"
+                                    placeholder="Latitude" value="@Model.Latitude" step="any" required />
+                            </div>
+                            <div class="col-md-6">
+                                <input type="number" id="longitude" name="Longitude" class="form-control"
+                                    placeholder="Longitude" value="@Model.Longitude" step="any" required />
+                            </div>
+                        </div>
+                        <small class="text-muted">Enter coordinates for Cape Town area (e.g., -33.9212, 18.4183)</small>
+                    </div>
+
+                    <!-- Max Attendees -->
+                    <div class="mb-3">
+                        <label>Max Attendees:</label>
+                        <input type="number" asp-for="EventMaxAttendees" class="form-control" required />
+                    </div>
+
+                    <!-- Ratings -->
+                    <div class="mb-3">
+                        <label>Ratings:</label>
+                        <input type="number" asp-for="EventRatings" class="form-control" step="0.1" min="0" max="5" required />
+                    </div>
+
+                    <!-- Fixed Date Field -->
+                    <div class="mb-3">
+                        <label>Event Date:</label>
+                        <input type="datetime-local" id="eventDate" name="EventDateFormatted" class="form-control" value="@Model.EventDateFormatted" required />
+                    </div>
+
+                    <!-- Event Status Dropdown -->
+                    <div class="mb-3">
+                        <label>Event Status:</label>
+                        <select id="eventStatus" asp-for="Status" class="form-control" required>
+                            <option value="Online">Online</option>
+                            <option value="Previous">Previous</option>
+                            <option value="Deleted">Deleted</option>
+                        </select>
+                    </div>
+
+                    <!-- Save & Cancel Buttons -->
+                    <div class="card-footer">
+                        <button type="submit" class="btn btn-warning">💾 Save Details</button>
+                        <button type="button" class="btn btn-secondary" onclick="location.href='/Admin/AdminEventManagement'">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+}
+
+@section Scripts {
+   <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const latitudeInput = document.getElementById("latitude");
+        const longitudeInput = document.getElementById("longitude");
+        const dateInput = document.getElementById("eventDate");
+        const statusSelect = document.getElementById("eventStatus");
+        const form = document.getElementById('editEventForm');
+
+        // ✅ Validate latitude & longitude input
+        function validateCoordinates(input) {
+            if (input.value.includes(",")) {
+                alert("⚠️ Please use a decimal point (.) instead of a comma (,) for coordinates.");
+                input.value = input.value.replace(",", ".");
+            }
+        }
+
+        latitudeInput.addEventListener("change", () => validateCoordinates(latitudeInput));
+        longitudeInput.addEventListener("change", () => validateCoordinates(longitudeInput));
+
+        // ✅ Update status dropdown based on event date
+        function updateStatusOptions() {
+            const selectedDate = new Date(dateInput.value);
+            const now = new Date();
+            statusSelect.innerHTML = '';
+
+            if (selectedDate > now) {
+                statusSelect.add(new Option('Online', 'Online'));
+                statusSelect.add(new Option('Deleted', 'Deleted'));
+            } else {
+                statusSelect.add(new Option('Previous', 'Previous'));
+                statusSelect.add(new Option('Deleted', 'Deleted'));
+            }
+        }
+
+        dateInput.addEventListener("change", updateStatusOptions);
+        updateStatusOptions();
+
+        // ✅ Handle form submission
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            let eventDate = dateInput.value;
+            if (!eventDate) {
+                alert("⚠️ Please select a valid event date.");
+                return;
+            }
+
+            let eventDateUTC = new Date(eventDate).toISOString();
+
+            const formData = new FormData(form);
+            formData.append('Latitude', latitudeInput.value.trim());
+            formData.append('Longitude', longitudeInput.value.trim());
+            formData.append('EventDate', eventDateUTC);
+
+            fetch(form.action, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert("✅ Event updated successfully!");
+                    setTimeout(() => { 
+                        window.location.href = '/Admin/AdminEventManagement'; 
+                    }, 1500);
+                } else {
+                    alert("❌ Failed to update event: " + (data.message || "Unknown error"));
+                }
+            })
+            .catch(error => {
+                alert("❌ An error occurred while updating the event.");
+            });
+        });
+    });
+</script>
+}

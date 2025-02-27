@@ -1,0 +1,219 @@
+@{
+    ViewData["Title"] = "Log In";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+     ViewData["HideFooter"] = true;
+}
+
+<div class="login-container">
+    <div class="login-box">
+        <h2 class="login-title">Log In</h2>
+
+        @if (ViewBag.Error != null)
+        {
+            <div class="alert alert-danger">
+                @ViewBag.Error
+            </div>
+        }
+
+        @if (TempData["Message"] != null)
+        {
+            <div class="alert alert-success">
+                @TempData["Message"]
+            </div>
+        }
+
+        <form asp-action="LogIn" method="post">
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" class="form-control" required placeholder="Enter your email"/>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" class="form-control" required placeholder="Enter your password"/>
+            </div>
+
+            <div class="form-options">
+                <div class="remember-me">
+                    <input type="checkbox" id="rememberMe" name="rememberMe">
+                    <label for="rememberMe">Remember me</label>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary login-btn">Log In</button>
+
+            <div class="login-links">
+                <p><a href="/Admin/Login" class="admin-login">Log in as Administrator</a></p>
+                <p>Don't have an account? <a href="/Account/SignUp" class="signup-link">Sign Up</a></p>
+            </div>
+        </form>
+    </div>
+</div>
+<style>
+    /* Full-page background image */
+body {
+    background: url('/images/CPTbackground.jpeg') no-repeat center center fixed;
+    background-size: cover;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+/* Center login container */
+
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    width: 100%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); /* Ensures proper centering */
+    padding-top: 80px; /
+}
+
+/* Login box styling */
+.login-box {
+    background: rgba(255, 255, 255, 0.825); /* Adjusted for better readability */
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    width: 350px;
+    text-align: center;
+    margin-top: 15px;
+}
+body {
+    padding-top: 80px; /* Pushes content down below navbar */
+}
+
+/* Fixes footer staying at the bottom */
+.footer {
+    position: relative;
+    bottom: 0;
+    width: 100%;
+    background-color: rgba(240, 240, 240, 0.9);
+    padding: 10px;
+    text-align: center;
+}
+/* Ensure Navbar Stretches Full Width */
+.navbar {
+    width: 100%;
+    max-width: 100%;
+    background-color: #add8e6; /* Adjust to match your theme */
+    padding: 15px 0;
+}
+
+/* Ensure navbar links align properly */
+.navbar .container {
+    max-width: 100%;
+    padding: 0 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Adjust navbar links */
+.navbar a {
+    text-decoration: none;
+    color: black;
+    font-weight: bold;
+    padding: 10px 15px;
+}
+
+
+    .login-box h2 {
+        margin-bottom: 20px;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+        text-align: left;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+    }
+
+    .btn-primary {
+        width: 100%;
+        padding: 10px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: 0.3s ease-in-out;
+    }
+
+    .btn-primary:hover {
+        background-color: #0056b3;
+    }
+
+    .alert {
+        padding: 10px;
+        margin-bottom: 15px;
+        border-radius: 5px;
+        text-align: center;
+    }
+
+    .alert-danger {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+
+    .alert-success {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+
+    .form-options {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+
+    .forgot-link {
+        color: #007bff;
+        text-decoration: none;
+        font-size: 0.9rem;
+    }
+
+    .forgot-link:hover {
+        text-decoration: underline;
+    }
+
+    .signup-prompt {
+        margin-top: 15px;
+        text-align: center;
+    }
+
+    .signup-prompt a {
+        color: #007bff;
+        text-decoration: none;
+        font-weight: bold;
+    }
+
+    .signup-prompt a:hover {
+        text-decoration: underline;
+    }
+
+
+</style>

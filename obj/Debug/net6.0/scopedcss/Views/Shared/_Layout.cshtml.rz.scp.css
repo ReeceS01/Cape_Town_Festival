@@ -1,0 +1,236 @@
+/* Main Layout Structure */
+.wrapper[b-qjyw29vifp] {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.main-content[b-qjyw29vifp] {
+  flex: 1 0 auto;
+}
+
+/* Navbar Styling */
+.navbar[b-qjyw29vifp] {
+  background-color: #add8e6;
+  padding: 0;
+  height: 120px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-container[b-qjyw29vifp] {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+}
+
+/* Logo Styling */
+.navbar-logo[b-qjyw29vifp] {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.navbar-logo img[b-qjyw29vifp] {
+  height: 105px;
+  width: 375px;
+  object-fit: contain;
+}
+
+
+/* Navigation Links */
+/* Ensure the dropdown menu appears lower on the page */
+.admin-dropdown .dropdown-menu[b-qjyw29vifp] {
+  display: none;
+  opacity: 0;
+  position: absolute;
+  top: 120%; /* Move it further down */
+  left: 0;
+  background: white;
+  border: 1px solid #ccc;
+  padding: 10px;
+  z-index: 1050; /* Ensures it appears above other elements */
+  transform: translateY(10px); /* Smooth initial placement */
+  transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1); /* Adds a slight shadow */
+}
+
+/* Ensure the dropdown parent container is positioned correctly */
+.admin-dropdown[b-qjyw29vifp] {
+  position: relative;
+}
+
+/* Keep the dropdown open when hovering over either the button or the menu */
+.admin-dropdown:hover .dropdown-menu[b-qjyw29vifp],
+.admin-dropdown .dropdown-menu:hover[b-qjyw29vifp] {
+  display: block;
+  opacity: 1;
+  transform: translateY(30px); /* Moves it further down */
+}
+
+/* Ensure dropdown stays open when the user moves the mouse between menu items */
+.admin-dropdown .dropdown-menu:hover[b-qjyw29vifp] {
+  display: block;
+  opacity: 1;
+  transform: translateY(30px);
+}
+
+/* Navbar styling to ensure proper stacking */
+.navbar[b-qjyw29vifp] {
+  position: relative; /* Allows the dropdown to position absolutely */
+  z-index: 1000;
+  overflow: visible; /* Ensure dropdown is not clipped */
+}
+
+/* Ensure dropdown links are well spaced and visible */
+.admin-dropdown .dropdown-menu .dropdown-item[b-qjyw29vifp] {
+  padding: 12px 16px;
+  font-size: 14px;
+  color: #333;
+  text-decoration: none;
+  display: block;
+  transition: background 0.2s ease-in-out;
+}
+
+/* Change background color on hover */
+.admin-dropdown .dropdown-menu .dropdown-item:hover[b-qjyw29vifp] {
+  background: #f8f9fa; /* Light gray background */
+  color: #000;
+}
+
+/* Increase the dropdown spacing to drop further down */
+.admin-dropdown .dropdown-menu[b-qjyw29vifp] {
+  margin-top: 15px;
+}
+
+.navbar-links[b-qjyw29vifp] {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nav-item.dropdown:hover .dropdown-menu[b-qjyw29vifp] {
+  display: block;
+  margin-top: 0;
+}
+
+.navbar-links li[b-qjyw29vifp] {
+  display: flex;
+  align-items: center;
+}
+
+.navbar-links a[b-qjyw29vifp],
+.btn-logout[b-qjyw29vifp] {
+  color: #000;
+  text-decoration: none;
+  font-size: 18px;
+  font-weight: 500;
+  padding: 10px 18px;
+  border-radius: 5px;
+  transition: all 0.3s ease;
+  display: inline-block;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.navbar-links a:hover[b-qjyw29vifp],
+.btn-logout:hover[b-qjyw29vifp] {
+  background-color: rgba(0, 0, 0, 0.1);
+  color: #007bff;
+}
+
+/* Logout Button Form Reset */
+.navbar-links form[b-qjyw29vifp] {
+  margin: 0;
+  padding: 0;
+}
+
+/* Footer Styling */
+.footer[b-qjyw29vifp] {
+  background-color: #add8e6;
+  color: #000;
+  padding: 20px 0;
+  margin-top: auto;
+  flex-shrink: 0;
+  width: 100%;
+}
+
+/* Newsletter Form Styling */
+#newsletter-form[b-qjyw29vifp] {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+#newsletter-form input[type="email"][b-qjyw29vifp] {
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  margin-right: 10px;
+}
+
+#newsletter-form button[b-qjyw29vifp] {
+  padding: 8px 20px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+#newsletter-form button:hover[b-qjyw29vifp] {
+  background-color: #0056b3;
+}
+
+#subscription-message[b-qjyw29vifp] {
+  margin-top: 10px;
+  color: #28a745;
+}
+
+/* Responsive Design */
+@media (max-width: 991px) {
+  .navbar[b-qjyw29vifp] {
+      height: auto;
+      padding: 15px 0;
+  }
+
+  .navbar-container[b-qjyw29vifp] {
+      flex-direction: column;
+      gap: 15px;
+  }
+
+  .navbar-logo img[b-qjyw29vifp] {
+      height: 80px;
+      width: 285px;
+  }
+
+  .navbar-links[b-qjyw29vifp] {
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+  }
+
+  .navbar-links a[b-qjyw29vifp],
+  .btn-logout[b-qjyw29vifp] {
+      font-size: 16px;
+      padding: 8px 14px;
+  }
+}
+
+
+
+@media (max-width: 576px) {
+  .navbar-logo img[b-qjyw29vifp] {
+      height: 60px;
+      width: 215px;
+  }
+
+  .navbar-links[b-qjyw29vifp] {
+      flex-direction: column;
+      align-items: center;
+  }
+}

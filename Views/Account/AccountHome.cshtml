@@ -1,0 +1,663 @@
+@{
+    ViewData["Title"] = "My Account";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["HideFooter"] = true;
+
+    var userData = ViewBag.UserData as Dictionary<string, object>;
+    var rsvpList = ViewBag.RSVPs as List<Dictionary<string, object>>;
+}
+
+@if (userData != null)
+{
+    <div class="account-container">
+            <div style="background-color: rgba(255, 255, 255, 0.80); padding: 15px; border-radius: 10px; display: inline-block; text-align: center; width: 100%;">
+                <h1 style="text-align: center; margin: 0;">Welcome, @userData["FirstName"] @userData["LastName"]!</h1>
+                <h5 style="text-align: center; margin: 5px 0;">Email: @userData["Email"]<br></h5>
+                <div class="edit-account-container">
+                <a href="/Account/EditAccount" class="btn btn-primary edit-btn">Edit Account</a>
+                </div>
+            
+            <!-- ✅ Centered "Your RSVPs" Title -->
+            <div class="rsvp-header">
+                <h1 class="rsvp-title">Your Upcoming RSVPs</h1>
+            </div>
+            <p class="rsvp-description"><br>Below are all the upcoming events that you have RSVP'ed to. You can also access directions, your e-Ticket, add to your calendar, as well as edit how many are coming to the festival or cancel your RSVP. <br></p>
+
+            <!-- ✅ Centered Search Bar Below -->
+            <div class="search-container">
+                <input type="text" id="searchBox" class="search-bar" placeholder="Search for Upcoming or Previous Events" oninput="filterEvents()" />
+            </div>
+
+            <br> 
+            @if (TempData["SuccessMessage"] != null)
+            {
+                <div class="alert alert-success">
+                    @TempData["SuccessMessage"]
+                </div>
+            }
+
+            @if (TempData["ErrorMessage"] != null)
+            {
+                <div class="alert alert-danger">
+                    @TempData["ErrorMessage"]
+                </div>
+            }
+        
+
+       
+        @if (rsvpList != null && rsvpList.Count > 0)
+        {
+            
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Event Name</th>
+                        <th>Category</th>
+                        <th>Start Date</th>
+                        <th>Attendees</th>
+                        <th>Functionality</th>
+                        <th>RSVP Actions</th>
+                    </tr>
+                </thead>
+                <tbody> 
+                    @foreach (var rsvp in rsvpList)
+                    {
+                        if (rsvp.ContainsKey("StartDate") && DateTime.TryParse(rsvp["StartDate"]?.ToString(), out DateTime startDate))
+                        {
+                            if (startDate > DateTime.UtcNow) // ✅ Only show future events
+                            {
+                                var eventIdString = rsvp["EventID"].ToString();
+                                var location = rsvp.ContainsKey("Location") ? rsvp["Location"]?.ToString() : "Unknown";
+
+                                <tr>
+                                    <td>@rsvp["EventName"]</td>
+                                    <td>@rsvp["Category"]</td>
+                                    <td>@FormatDate(rsvp["StartDate"])</td>
+                                    <td>@rsvp["AttendeeCount"]</td>
+
+                                    <!-- Functionality Buttons -->
+                                    <td class="functionality">
+                                        <div class="functionality-buttons">
+                                            <a href="javascript:void(0);" onclick="showCalendarPopup('@eventIdString', '@rsvp["EventName"]', '@startDate', '@location')" class="btn btn-primary">
+                                                <i class="fas fa-calendar"></i> Add to Calendar
+                                            </a>
+                                            
+                                            @if (!string.IsNullOrEmpty(location) && location != "Unknown")
+                                            {
+                                                <a href="https://www.google.com/maps/search/?api=1&query=@Uri.EscapeDataString(location)" class="btn btn-warning" target="_blank">
+                                                    <i class="fas fa-map-marker-alt"></i> View Directions
+                                                </a>
+                                            }
+                                            <a href="@Url.Action("DisplayETicket", "RSVP", new { eventId = eventIdString })" 
+                                                    class="btn btn-dark" 
+                                                    target="_blank">
+                                                        <i class="fas fa-eye"></i> Show e-Ticket
+                                            </a>                    
+                                        </div>
+                                    </td>
+
+                                    <!-- RSVP Actions -->
+                                    <td class="rsvp-actions">
+                                        <div class="rsvp-buttons">
+                                            <a href="@Url.Action("EditForm", "RSVP", new { eventId = eventIdString })" class="btn btn-secondary">
+                                                <i class="fas fa-edit"></i> Edit
+                                            </a>
+                                            <form method="post" action="@Url.Action("Cancel", "RSVP")" style="display: inline-block;" onsubmit="return confirmCancel(event)">
+                                                <input type="hidden" name="eventId" value="@eventIdString" />
+                                                <button type="submit" class="btn btn-danger">
+                                                    <i class="fas fa-times"></i> Cancel
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p>You have not RSVP'd to any events yet.</p>
+        }
+    </div>
+</div>
+}
+<div style="background-color: rgba(255, 255, 255, 0.80); padding: 15px; border-radius: 10px; display: inline-block; text-align: center; width: 100%;">
+<h1 class="text-center">Previous Events</h1>
+<p class="rsvp-description">If you're interested in leaving a review, come back later once an event has passed.</p>
+
+@if (ViewBag.RSVPs != null && ((List<Dictionary<string, object>>)ViewBag.RSVPs).Any())
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Event Name</th>
+                <th>Date</th>
+                <th>Location</th>
+                <th>Review</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var eventItem in (List<Dictionary<string, object>>)ViewBag.RSVPs)
+            {
+                if (eventItem.ContainsKey("StartDate") && eventItem["StartDate"] is DateTime startDate)
+                {
+                    // ✅ Show only past events based on RSVPCollection's StartDate
+                    if (startDate < DateTime.UtcNow)
+                    {
+                        <tr>
+                            <td>@eventItem["EventName"]</td>
+                            <td>@startDate.ToString("dddd, MMM dd @ hh:mm tt")</td> <!-- ✅ User-friendly Date Format -->
+                                <td>@eventItem["Location"]</td>
+                            <td>
+                                @if (!eventItem.ContainsKey("UserRating")) // ✅ No review yet
+                                {
+                                    <a href="@Url.Action("LeaveReview", "Account", new { eventId = eventItem["EventID"] })" class="btn btn-primary">Leave Review</a>
+                                }
+                                else // ✅ Display existing review
+                                {
+                                    <span>⭐ @eventItem["UserRating"] / 5</span>
+                                    <p>@eventItem["UserReview"]</p>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p class="text-center">You have no past events to review.</p>
+}
+</div>
+@section Scripts {
+<script>
+// ✅ Weather API Fix
+document.addEventListener("DOMContentLoaded", function () {
+    const API_KEY = "838e21eb9fcb2e152ed2a117e31d598f"; // Replace with your actual API key
+    const CITY = "Cape Town";
+    const URL = `https://api.openweathermap.org/data/2.5/forecast?q=${CITY}&units=metric&appid=${API_KEY}`;
+
+    fetch(URL)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.list || data.list.length === 0) {
+                console.error("No weather data available.");
+                return;
+            }
+
+            // 🌤️ **Current Weather**
+            const current = data.list[0];
+            document.getElementById("temperature").innerText = Math.round(current.main.temp);
+            document.getElementById("weather-condition").innerText = current.weather[0].main;
+            document.getElementById("weather-icon").src = `https://openweathermap.org/img/wn/${current.weather[0].icon}.png`;
+
+            // 📅 **5-Day Forecast**
+            const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+            let dailyData = {};
+
+            data.list.forEach(entry => {
+                let date = new Date(entry.dt * 1000);
+                let day = days[date.getDay()];
+                
+                // ✅ Pick the first occurrence of each day
+                if (!dailyData[day]) {
+                    dailyData[day] = {
+                        temp: Math.round(entry.main.temp),
+                        icon: entry.weather[0].icon
+                    };
+                }
+            });
+
+            // ✅ **Display in UI**
+            const forecastDays = Object.keys(dailyData).slice(0, 5); // Show 5 days
+            for (let i = 0; i < forecastDays.length; i++) {
+                document.getElementById(`day${i + 1}`).innerText = forecastDays[i];
+                document.getElementById(`temp${i + 1}`).innerText = `${dailyData[forecastDays[i]].temp}°C`;
+                document.getElementById(`icon${i + 1}`).src = `https://openweathermap.org/img/wn/${dailyData[forecastDays[i]].icon}.png`;
+            }
+        })
+        .catch(error => console.error("Error fetching weather:", error));
+});
+
+// ✅ Event Filtering
+document.addEventListener("DOMContentLoaded", function () {
+    function filterEvents() {
+        const query = document.getElementById("searchBox")?.value.toLowerCase() || "";
+        const rows = document.querySelectorAll(".table tbody tr");
+
+        rows.forEach(row => {
+            const eventName = row.children[0]?.innerText.toLowerCase() || "";
+            row.style.display = eventName.includes(query) ? "" : "none";
+        });
+    }
+
+    function confirmCancel(event) {
+        if (!confirm("Are you sure you want to cancel your RSVP?")) {
+            event.preventDefault();
+            return false;
+        }
+        return true;
+    }
+
+    function downloadTicket(eventId) {
+        window.open(`/RSVP/GenerateTicket?eventId=${encodeURIComponent(eventId)}`, "_blank");
+    }
+
+    // ✅ Google Calendar Link Generator (Moved to Global Scope)
+    function generateGoogleCalendarLink(eventName, startDate, location) {
+        try {
+            const start = new Date(startDate);
+            if (isNaN(start.getTime())) throw new Error("Invalid Start Date");
+
+            const formattedStart = start.toISOString().replace(/-|:|\.\d+/g, "");
+            const formattedEnd = new Date(start.getTime() + 4 * 60 * 60 * 1000) // 4 hours later
+                .toISOString()
+                .replace(/-|:|\.\d+/g, "");
+
+            return `https://calendar.google.com/calendar/render?action=TEMPLATE` +
+                   `&text=${encodeURIComponent(eventName)}` +
+                   `&dates=${formattedStart}/${formattedEnd}` +
+                   `&details=RSVP%20for%20${encodeURIComponent(eventName)}` +
+                   `&location=${encodeURIComponent(location || "Location not specified")}` +
+                   `&sf=true&output=xml`;
+        } catch (error) {
+            console.error("Error generating Google Calendar link:", error.message);
+            alert("Error generating Google Calendar link. Please try again.");
+            return "#";
+        }
+    }
+
+    // ✅ Custom Calendar Pop-up
+    function showCalendarPopup(eventId, eventName, startDate, location) {
+        if (!eventId || !eventName || !startDate) {
+            alert("Event details are missing. Please try again.");
+            return;
+        }
+
+        const googleCalendarLink = generateGoogleCalendarLink(eventName, startDate, location);
+        const appleCalendarLink = `/RSVP/GenerateCalendarEvent?eventId=${encodeURIComponent(eventId)}`;
+
+        // Create a custom modal
+        const modal = document.createElement("div");
+        modal.innerHTML = `
+            <div class="custom-modal">
+                <div class="modal-content">
+                    <h2>Add Event to Calendar</h2>
+                    <p>How would you like to save this event?</p>
+                    <div class="modal-buttons">
+                        <button id="downloadEvent" class="btn btn-primary">📅 Download Event</button>
+                        <button id="googleCalendar" class="btn btn-success">🌍 Add to Google Calendar</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Apply basic styles for modal
+        modal.style.position = "fixed";
+        modal.style.top = "50%";
+        modal.style.left = "50%";
+        modal.style.transform = "translate(-50%, -50%)";
+        modal.style.background = "white";
+        modal.style.padding = "20px";
+        modal.style.boxShadow = "0px 4px 8px rgba(0,0,0,0.2)";
+        modal.style.borderRadius = "10px";
+        modal.style.textAlign = "center";
+        modal.style.zIndex = "9999";
+
+        // Append modal to the body
+        document.body.appendChild(modal);
+
+        // Add event listeners
+        document.getElementById("downloadEvent").addEventListener("click", function () {
+            window.location.href = appleCalendarLink;
+            document.body.removeChild(modal); // Close modal after action
+        });
+
+        document.getElementById("googleCalendar").addEventListener("click", function () {
+            window.open(googleCalendarLink, "_blank");
+            document.body.removeChild(modal); // Close modal after action
+        });
+    }
+
+    // Attach functions globally
+    window.filterEvents = filterEvents;
+    window.confirmCancel = confirmCancel;
+    window.downloadTicket = downloadTicket;
+    window.showCalendarPopup = showCalendarPopup;
+});
+document.addEventListener("DOMContentLoaded", async function () {
+    const userEmail = "user@example.com"; // Replace with logged-in user email
+    const now = new Date(); // Get current date & time
+    const tableBody = document.getElementById("previousEventsTable");
+
+    try {
+        // 🔍 Query Firestore: Get RSVPs for this user
+        const rsvpCollection = await firestore.collection("RSVPsCollection")
+            .where("Email", "==", userEmail) // Filter RSVPs for the logged-in user
+            .get();
+
+        rsvpCollection.forEach(doc => {
+            const event = doc.data();
+            const startDate = new Date(event.StartDate.toDate()); // Convert Firestore timestamp to JS Date
+            const hasReview = event.UserRating !== undefined; // Check if review exists
+
+            // ✅ Only add to table if event is in the past
+            if (startDate < now) {
+                const row = `
+                    <tr>
+                        <td>${event.EventName}</td>
+                        <td>${startDate.toLocaleDateString()}</td>
+                        <td>${hasReview ? "✅ Reviewed" : "❌ Not Reviewed"}</td>
+                        <td>
+                            ${hasReview ? 
+                                `<button class="btn btn-secondary" disabled>Reviewed</button>` : 
+                                `<button class="btn btn-primary" onclick="openReviewModal('${doc.id}', '${event.EventName}', '${startDate.toISOString()}')">
+                                    Leave a Review
+                                </button>`}
+                        </td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            }
+        });
+
+    } catch (error) {
+        console.error("❌ Error fetching RSVP data:", error);
+    }
+});
+// ✅ Open Review Modal
+function openReviewModal(docId, eventName, eventDate) {
+    document.getElementById("eventDocId").value = docId;
+    document.getElementById("eventName").value = eventName;
+    document.getElementById("eventDate").value = new Date(eventDate).toLocaleString();
+    document.getElementById("userRating").value = "";
+    document.getElementById("userReview").value = "";
+
+    var reviewModal = new bootstrap.Modal(document.getElementById("reviewModal"));
+    reviewModal.show();
+}
+
+// ✅ Submit Review
+document.getElementById("reviewForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+
+    const docId = document.getElementById("eventDocId").value;
+    const rating = parseFloat(document.getElementById("userRating").value);
+    const review = document.getElementById("userReview").value.trim();
+
+    if (rating < 0 || rating > 5 || isNaN(rating)) {
+        alert("⚠️ Please enter a valid rating between 0 and 5.");
+        return;
+    }
+
+    if (review.length < 5) {
+        alert("⚠️ Your comment must be at least 5 characters long.");
+        return;
+    }
+
+    try {
+        await firestore.collection("RSVPsCollection").doc(docId).update({
+            UserRating: rating,
+            UserReview: review
+        });
+
+        alert("✅ Review submitted successfully!");
+        window.location.reload(); // Refresh page to update table
+
+    } catch (error) {
+        console.error("❌ Error submitting review:", error);
+        alert("❌ Failed to submit review. Try again.");
+    }
+});
+
+
+function filterEvents() {
+        let input = document.getElementById("searchBox").value.toLowerCase();
+        let rows = document.querySelectorAll(".table tbody tr");
+
+        rows.forEach(row => {
+            let eventName = row.cells[0].textContent.toLowerCase();
+            if (eventName.includes(input)) {
+                row.style.display = "";
+            } else {
+                row.style.display = "none";
+            }
+        });
+    }
+</script>
+}
+
+@section Styles {
+<style>
+    .account-container {
+        padding: 20px;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+        box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .table th,
+    .table td {
+        border: 1px solid #ddd;
+        padding: 12px;
+        text-align: left;
+    }
+
+    .table th {
+        background-color: #007bff;
+        color: white;
+        font-weight: bold;
+        text-align: center;
+    }
+
+    /* Ensures proper alignment for RSVP buttons */
+.rsvp-actions {
+    text-align: center;
+    vertical-align: middle;
+    width: 150px; /* Adjust width for alignment */
+}
+
+.rsvp-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Ensures proper spacing and layout for Functionality buttons */
+.functionality {
+    text-align: center;
+    vertical-align: middle;
+    width: 300px; /* Adjust width for better spacing */
+}
+
+.functionality-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* 2 buttons per row */
+    gap: 10px;
+    justify-content: center;
+}
+
+.btn {
+    width: 100%; /* Makes buttons equal width */
+    padding: 10px;
+    font-size: 14px;
+    border-radius: 5px;
+    text-align: center;
+}
+
+    .btn-primary {
+        background-color: #007bff;
+        color: white;
+    }
+
+    .btn-secondary {
+        background-color: #6c757d;
+        color: white;
+    }
+
+    .btn-danger {
+        background-color: #dc3545;
+        color: white;
+    }
+
+    .btn-info {
+        background-color: #17a2b8;
+        color: white;
+    }
+
+    .btn-warning {
+        background-color: #ffc107;
+        color: black;
+    }
+
+    .btn-dark {
+        background-color: #343a40;
+        color: white;
+    }
+
+    .alert {
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 5px;
+    }
+
+    .alert-success {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+
+    .alert-danger {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+
+    #searchBox {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 20px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+    }
+
+    .logout-form {
+        margin-top: 30px;
+    }
+    /* Increase text size for table content */
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+        box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .table th,
+    .table td {
+        border: 1px solid #ddd;
+        padding: 16px; /* Increase padding for better spacing */
+        text-align: left;
+        font-size: 18px; /* Increase font size for all table content */
+    }
+
+    .table th {
+        background-color: #007bff;
+        color: white;
+        font-weight: bold;
+        font-size: 20px; /* Make headers slightly bigger */
+    }
+
+    /* Make Event Name larger and bold */
+    .event-name {
+        font-size: 22px; /* Bigger size */
+        font-weight: bold; /* Bold */
+        color: #0056b3; /* Slightly darker blue for emphasis */
+    }
+
+    /* ✅ Adds spacing under the Edit Account Button */
+    .edit-account-container {
+        margin-bottom: 30px;
+        text-align: center;
+    }
+
+    /* ✅ Centers and styles the button */
+    .edit-btn {
+        display: inline-block;
+        width: 200px;
+        text-align: center;
+    }
+
+    /* ✅ Centers "Your RSVPs" */
+    .rsvp-header {
+        text-align: center;
+        margin-bottom: 10px;
+    }
+
+    /* ✅ Centers Search Bar & Makes it Smaller */
+    .search-container {
+        text-align: center;
+        margin-bottom: 5px;
+    }
+    .search-bar {
+        width: 350px; /* ✅ Slightly wider for better usability */
+        padding: 4px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        font-size: 14px;
+    }
+
+    /* ✅ Style for the Background Image */
+body {
+    background: url('/images/AccountHome.jpeg') no-repeat center center fixed;
+    background-size: cover;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    background: white;
+    border-radius: 10px;
+    overflow: hidden;
+}
+.table th {
+    background-color: #007bff;
+    color: white;
+}
+.rsvp-description {
+    text-align: center; /* ✅ Centers the text */
+    font-size: 20px; /* ✅ Readable font size */
+    color: #555; /* ✅ Slightly darker text for better readability */
+    margin-bottom: 20px; /* ✅ Adds space before the table */
+    max-width: 800px; /* ✅ Limits width for better readability */
+    margin-left: auto;
+    margin-right: auto;
+}
+</style>
+}
+
+@functions {
+    public string FormatDate(object dateObj)
+    {
+        if (dateObj is DateTime date)
+        {
+            return date.ToString("dddd, MMM dd @ hh:mm tt"); // Example: "Wednesday, Feb 28 @ 12:00 PM"
+        }
+        return "Unknown Date";
+    }
+}

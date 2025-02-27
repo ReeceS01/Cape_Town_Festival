@@ -1,0 +1,106 @@
+@{
+    ViewData["Title"] = "Admin Login";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["HideFooter"] = true;
+}
+
+<div class="admin-container">
+    <img src="/images/AdminCTFestival.png" alt="AdminCTFestival Logo" class="admin-logo">
+
+    <h1 class="admin-title">Admin Login Portal</h1>
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger">
+            @TempData["ErrorMessage"]
+        </div>
+    }
+
+    <form method="post" action="/Admin/Login" class="admin-form">
+        <div class="form-group">
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" class="form-control" required />
+        </div>
+
+        <div class="form-group">
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" class="form-control" required />
+        </div>
+
+        <button type="submit" class="btn btn-primary">Log In</button>
+    </form>
+</div>
+
+<style>
+    /* Center everything */
+    .admin-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        text-align: center;
+        padding: 20px;
+    }
+
+    /* Large Logo Image */
+    .admin-logo {
+        max-width: 600px; /* Larger size */
+        width: 90%; /* Adjusts for smaller screens */
+        height: auto;
+        margin-bottom: 20px;
+    }
+
+    /* Title Styling */
+    .admin-title {
+        font-size: 32px;
+        font-weight: bold;
+        margin-bottom: 15px;
+    }
+
+    /* Form Styling */
+    .admin-form {
+        max-width: 350px;
+        width: 100%;
+        background: #ffffff;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        text-align: left;
+    }
+
+    label {
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+
+    input {
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        font-size: 16px;
+    }
+
+    .btn-primary {
+        background-color: #007bff;
+        color: white;
+        padding: 12px;
+        border: none;
+        cursor: pointer;
+        border-radius: 5px;
+        font-size: 16px;
+        transition: background 0.3s ease-in-out;
+    }
+
+    .btn-primary:hover {
+        background-color: #0056b3;
+    }
+</style>

@@ -1,0 +1,665 @@
+@using Cape_Town_Festival.Models
+@model DashboardViewModel
+@{
+    ViewData["Title"] = "Admin Dashboard";
+    ViewData["HideFooter"] = true;
+}
+
+<!-- Add required CSS -->
+<link href="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.css" rel="stylesheet">
+
+<div class="container-fluid mt-4">
+    <!-- Top Stats Cards Row -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Events</h5>
+                    <h2 class="card-text">@Model.TotalEvents</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Average Occupancy</h5>
+                    <h2 class="card-text">@Model.AverageOccupancyRate%</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Users</h5>
+                    <h2 class="card-text">@Model.TotalUsers</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Average Rating</h5>
+                    <h2 class="card-text">@Model.AverageEventRating</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Event Categories Distribution</h5>
+                    <canvas id="categoriesChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Upcoming Events Map Locations</h5>
+                    <div id="map" style="height: 400px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity Row -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Upcoming Events</h5>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Event Name</th>
+                                    <th>Date</th>
+                                    <th>Location</th>
+                                    <th>RSVPs</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var evt in Model.UpcomingEvents)
+                                {
+                                    <tr>
+                                        <td>@evt.EventName</td>
+                                        <td>@evt.GetEventDateAsDateTime().ToShortDateString()</td>
+                                        <td>@evt.EventLocation</td>
+                                        <td>
+                                            <span class="@(evt.EventRSVPs >= evt.EventMaxAttendees ? "text-danger" : "text-success")">
+                                                @evt.EventRSVPs/@evt.EventMaxAttendees
+                                            </span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Recent Users</h5>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>First Name</th>
+                                    <th>Last Name</th>
+                                    <th>Email</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var user in Model.RecentUsers)
+                                {
+                                    <tr>
+                                        <td>@(user.FirstName ?? "N/A")</td>
+                                        <td>@(user.LastName ?? "N/A")</td>
+                                        <td>@(user.Email ?? "N/A")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="container-fluid mt-4">
+    
+    <!-- Additional Sections Below Existing Content -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Top Performing Events</h5>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Event Name</th>
+                                    <th>RSVPs</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var evt in Model.TopPerformingEvents)
+                                {
+                                    <tr>
+                                        <td>@evt.EventName</td>
+                                        <td>@evt.EventRSVPs</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">User Growth Over Time</h5>
+                    <canvas id="userGrowthChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid mt-4">
+    <!-- Visitors Attending the Festival (Upcoming RSVPs) -->
+    <div class="row">
+        <div class="col-md-12">
+            <h3 class="text-center text-white bg-primary p-2 rounded">Visitors Attending the Festival</h3>
+        </div>
+    </div>
+
+    <div class="row">
+        @if (Model.VisitorsAttendingFestival.Any())
+        {
+            @foreach (var eventGroup in Model.VisitorsAttendingFestival.GroupBy(e => e.EventName))
+            {
+                <div class="col-md-6">
+                    <div class="card mb-4 shadow-sm bg-primary text-white border-0">
+                        <div class="card-body">
+                            <h5 class="card-title text-white">@eventGroup.Key (@eventGroup.First().StartDate.ToString("dd MMM yyyy"))</h5>
+                            <p class="badge bg-danger p-2 rounded">RSVP'ed</p>
+                            <ul class="list-group">
+                                @foreach (var attendee in eventGroup)
+                                {
+                                    <li class="list-group-item border rounded bg-white text-dark">@attendee.Email (total @attendee.AttendeeCount)</li>
+                                }
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="col-md-12">
+                <p class="text-center text-muted">No upcoming festival attendees found.</p>
+            </div>
+        }
+    </div>
+
+    <!-- Past Event Attendees -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <h3 class="text-center text-white bg-secondary p-2 rounded">Past Event Attendees</h3>
+        </div>
+    </div>
+
+    <div class="row">
+        @if (Model.PastEventAttendees.Any())
+        {
+            @foreach (var eventGroup in Model.PastEventAttendees.GroupBy(e => e.EventName))
+            {
+                <div class="col-md-6">
+                    <div class="card mb-4 shadow-sm bg-secondary text-white border-0">
+                        <div class="card-body">
+                            <h5 class="card-title text-warning">@eventGroup.Key (@eventGroup.First().StartDate.ToString("dd MMM yyyy"))</h5>
+                            <p class="badge bg-warning p-2 rounded text-dark">Attended</p>
+                            <ul class="list-group">
+                                @foreach (var attendee in eventGroup)
+                                {
+                                    <li class="list-group-item bg-dark text-white border rounded">@attendee.Email (total @attendee.AttendeeCount)</li>
+                                }
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="col-md-12">
+                <p class="text-center text-muted">No past event attendees found.</p>
+            </div>
+        }
+    </div>
+</div>
+
+
+
+
+<!-- Add required JavaScript -->
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBybbDQ6fPw8ujyT_dYj0s2lhX9lKTfnYk"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+
+@section Scripts{
+<script>
+   document.addEventListener("DOMContentLoaded", function() {
+    // Clear any previous event handlers by removing all scripts and readding them
+    const categorySelect = document.getElementById("categorySelect");
+    const eventSelect = document.getElementById("eventSelect");
+    const loadButton = document.getElementById("loadEventBtn");
+    const eventDashboard = document.getElementById("eventDashboard");
+    
+    
+    // Modified event selection handling to prevent duplicates
+    categorySelect.addEventListener("change", async function() {
+        const category = this.value;
+        console.log("Selected category:", category);
+        
+        // Reset event select dropdown
+        eventSelect.innerHTML = '<option value="">-- Select an Event --</option>';
+        eventSelect.disabled = true;
+        loadButton.disabled = true;
+        
+        if (!category) return;
+        
+        try {
+            // Show loading state
+            eventSelect.innerHTML = '<option value="">Loading events...</option>';
+            
+            const response = await fetch(`/Dashboard/GetEventsByCategory?category=${encodeURIComponent(category)}`);
+            const data = await response.json();
+            
+            console.log("Category events data:", JSON.stringify(data));
+            
+            eventSelect.innerHTML = '<option value="">-- Select an Event --</option>';
+            
+            if (data.success && data.events && data.events.length > 0) {
+                // Create a Set to track added event IDs to prevent duplicates
+                const addedEventIds = new Set();
+                
+                // Add each unique event to the dropdown
+                data.events.forEach(event => {
+                    // Skip if already added
+                    if (addedEventIds.has(event.eventID)) return;
+                    
+                    const option = document.createElement("option");
+                    option.value = event.eventID;
+                    option.textContent = event.eventName;
+                    eventSelect.appendChild(option);
+                    
+                    // Mark as added
+                    addedEventIds.add(event.eventID);
+                });
+                
+                eventSelect.disabled = false;
+            } else {
+                eventSelect.innerHTML = '<option value="">No events found in this category</option>';
+            }
+        } catch (error) {
+            console.error("Error fetching events:", error);
+            eventSelect.innerHTML = '<option value="">Error loading events</option>';
+        }
+    });
+    
+    // Enable/disable load button based on event selection
+    eventSelect.addEventListener("change", function() {
+        loadButton.disabled = !this.value;
+    });
+    
+    // Load event dashboard when button is clicked
+    loadButton.addEventListener("click", async function() {
+        const eventId = eventSelect.value;
+        if (!eventId) {
+            alert("Please select an event first");
+            return;
+        }
+        
+        try {
+            // Show loading state in the dashboard area
+            eventDashboard.innerHTML = `
+                <div class="text-center p-4">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2">Loading event data...</p>
+                </div>
+            `;
+            
+            // Fetch event dashboard data
+            const response = await fetch(`/Dashboard/GetEventDashboard?eventId=${eventId}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error: ${response.status}`);
+            }
+            
+            const responseText = await response.text();
+            console.log("Raw response:", responseText);
+            
+            // Parse the JSON carefully
+            let data;
+            try {
+                data = JSON.parse(responseText);
+            } catch (e) {
+                console.error("JSON parse error:", e);
+                throw new Error("Invalid response format");
+            }
+            
+            // Log the exact data structure 
+            console.log("Event dashboard data:", data);
+            
+            if (!data.success || !data.eventDetails) {
+                throw new Error(data.message || "Failed to load event details");
+            }
+            
+            // Access the event details safely
+            const details = data.eventDetails || {};
+            
+            // Build dashboard UI with careful null checks
+            eventDashboard.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-primary text-white">
+                                <h4>${details.EventName || "Unnamed Event"}</h4>
+                            </div>
+                            <div class="card-body">
+                                <p><strong>Category:</strong> ${details.EventCategory || "Not specified"}</p>
+                                <p><strong>Date:</strong> ${details.EventDate || "Date not available"}</p>
+                                <p><strong>Location:</strong> ${details.EventLocation || "Location not specified"}</p>
+                                <p><strong>Capacity:</strong> ${details.EventMaxAttendees || 0}</p>
+                                <p><strong>Status:</strong> <span class="badge bg-secondary">${details.Status || "Unknown"}</span></p>
+                                <p><strong>Rating:</strong></p>
+                                <div class="text-warning">
+                                    ${Array(Math.min(5, Math.max(0, parseInt(details.EventRatings || 0)))).fill('★').join('')}
+                                    ${Array(5 - Math.min(5, Math.max(0, parseInt(details.EventRatings || 0)))).fill('☆').join('')}
+                                </div>
+                                ${details.EventDescription ? 
+                                    `<div class="mt-3">
+                                        <strong>Description:</strong>
+                                        <p>${details.EventDescription}</p>
+                                    </div>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-secondary text-white">
+                                <h4>Event Image</h4>
+                            </div>
+                            <div class="card-body text-center">
+                                ${details.EventImageURL ? 
+                                    `<img src="${details.EventImageURL}" alt="${details.EventName || 'Event'}" class="img-fluid rounded" style="max-height: 250px;">` : 
+                                    '<div class="alert alert-warning">No image available</div>'}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header bg-info text-white">
+                                <h4>Event Performance</h4>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="rsvpGrowthChart" height="100"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Create dummy data for the chart
+            const maxAttendees = parseInt(details.EventMaxAttendees) || 100;
+            const dummyRSVPData = [
+                { date: "Week 1", count: Math.floor(Math.random() * 0.2 * maxAttendees) },
+                { date: "Week 2", count: Math.floor(Math.random() * 0.4 * maxAttendees) },
+                { date: "Week 3", count: Math.floor(Math.random() * 0.6 * maxAttendees) },
+                { date: "Week 4", count: Math.floor(Math.random() * 0.8 * maxAttendees) },
+                { date: "Current", count: details.CurrentRSVPs || Math.floor(Math.random() * maxAttendees) }
+            ];
+            
+            // Render the chart
+            renderRSVPChart(dummyRSVPData);
+            
+        } catch (error) {
+            console.error("Error loading dashboard:", error);
+            eventDashboard.innerHTML = `
+                <div class="alert alert-danger">
+                    <h4>Error Loading Dashboard</h4>
+                    <p>${error.message}</p>
+                    <button class="btn btn-sm btn-primary mt-2" onclick="document.getElementById('loadEventBtn').click()">
+                        Try Again
+                    </button>
+                </div>
+            `;
+        }
+    });
+});
+
+// Keep the existing renderRSVPChart function as is
+function renderRSVPChart(rsvpData) {
+    const ctx = document.getElementById("rsvpGrowthChart").getContext("2d");
+    
+    new Chart(ctx, {
+        type: "line",
+        data: {
+            labels: rsvpData.map(entry => entry.date),
+            datasets: [{
+                label: "RSVPs Over Time",
+                data: rsvpData.map(entry => entry.count),
+                borderColor: "rgba(54, 162, 235, 1)",
+                backgroundColor: "rgba(54, 162, 235, 0.2)",
+                fill: true,
+                borderWidth: 2,
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: { 
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Number of RSVPs'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Time Period'
+                    }
+                }
+            }
+        }
+    });
+}
+
+    //print button
+    function printDashboard() {
+        // Open the print dialog
+        window.print();
+    }
+
+    async function downloadPDF() {
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF("p", "mm", "a4");
+
+        // Select the dashboard container
+        const dashboard = document.querySelector(".container-fluid");
+
+        await html2canvas(dashboard, {
+            scale: 2, // Increase resolution for better quality
+            useCORS: true,
+            scrollY: 0 // Ensure full content capture, even if off-screen
+        }).then((canvas) => {
+            const imgData = canvas.toDataURL("image/png");
+            const imgWidth = 210; // A4 width in mm
+            const imgHeight = (canvas.height * imgWidth) / canvas.width; // Keep aspect ratio
+
+            // If content is too long, use multiple pages
+            if (imgHeight > 297) { // A4 height in mm
+                let position = 0;
+                while (position < imgHeight) {
+                    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+                    position += 297; // Move to the next page
+                    if (position < imgHeight) {
+                        pdf.addPage();
+                    }
+                }
+            } else {
+                pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+            }
+
+            const currentDate = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
+            pdf.save(`Dashboard_Report_${currentDate}.pdf`);
+        });
+    }
+
+    // Initialize the map
+    function initMap() {
+        const capeTown = { lat: -33.9249, lng: 18.4241 };
+        const map = new google.maps.Map(document.getElementById("map"), {
+            zoom: 12,
+            center: capeTown,
+            styles: [{
+                featureType: "poi",
+                elementType: "labels",
+                stylers: [{ visibility: "off" }]
+            }]
+        });
+
+        const infoWindow = new google.maps.InfoWindow();
+
+        @foreach (var evt in Model.UpcomingEvents)
+        {
+            <text>
+            try {
+                const position = {
+                    lat: @evt.EventLatLong.Latitude,
+                    lng: @evt.EventLatLong.Longitude
+                };
+
+                const marker = new google.maps.Marker({
+                    position: position,
+                    map: map,
+                    title: "@evt.EventName",
+                    icon: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png'
+                });
+
+                marker.addListener("click", () => {
+                    const content = `
+                        <div class="info-window">
+                            <h6>@evt.EventName</h6>
+                            <p><strong>Location:</strong> @evt.EventLocation</p>
+                            <p><strong>Date:</strong> @evt.GetEventDateAsDateTime().ToShortDateString()</p>
+                            <p><strong>Category:</strong> @evt.EventCategory</p>
+                            <p><strong>RSVPs:</strong> @evt.EventRSVPs/@evt.EventMaxAttendees</p>
+                        </div>
+                    `;
+                    
+                    infoWindow.setContent(content);
+                    infoWindow.open(map, marker);
+                });
+            } catch (error) {
+                console.error("Error adding marker for event: @evt.EventName", error);
+            }
+            </text>
+        }
+    }
+
+    // Initialize Categories Chart
+    const ctx = document.getElementById('categoriesChart').getContext('2d');
+    const categoriesData = {
+        labels: [@Html.Raw(string.Join(",", Model.PopularCategories.Select(c => $"'{c.Name}'")))],
+        datasets: [{
+            label: 'RSVPs by Category',
+            data: [@string.Join(",", Model.PopularCategories.Select(c => c.RSVPCount))],
+            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+            borderColor: 'rgba(54, 162, 235, 1)',
+            borderWidth: 1
+        }]
+    };
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: categoriesData,
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    // Initialize map when page loads
+    google.maps.event.addDomListener(window, 'load', initMap);
+
+
+
+
+    // User Growth Chart
+    const userGrowthCtx = document.getElementById('userGrowthChart').getContext('2d');
+    new Chart(userGrowthCtx, {
+        type: 'line',
+        data: {
+            labels: [@Html.Raw(string.Join(",", Model.UserGrowth.Select(u => $"'{u.Month}'")))],
+            datasets: [{
+                label: 'New Users',
+                data: [@string.Join(",", Model.UserGrowth.Select(u => u.NewUsers))],
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 2,
+                fill: false
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { stepSize: 1 } // Ensures whole numbers
+                }
+            }
+        }
+    });
+
+</script>
+}
+
+<style>
+    .info-window {
+        padding: 10px;
+        max-width: 250px;
+    }
+    .info-window h6 {
+        margin-bottom: 10px;
+        color: #333;
+    }
+    .info-window p {
+        margin: 5px 0;
+        font-size: 0.9em;
+        color: #666;
+    }
+
+@@media print {
+        /* Hide navigation bar, buttons, and footer */
+        nav, .btn, .navbar, footer {
+            display: none !important;
+        }
+    }
+
+</style>

@@ -1,0 +1,193 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Cape_Town_Festival</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/Cape_Town_Festival.styles.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/ResponsiveDesign.css" asp-append-version="true" />
+
+    @RenderSection("Styles", required: false)
+</head>
+<body class="wrapper">
+<header>
+  <nav class="navbar">
+    <div class="container navbar-container">
+      <a href="/" class="navbar-logo">
+        <img src="/images/CTFestival.PNG" alt="Cape Town Festival Logo">
+      </a>
+      <ul class="navbar-links">
+        <li><a href="/Home/Index">Home</a></li>
+        <li><a href="/Events/EventsDynamic">Book Events</a></li>
+        <li><a href="@Url.Action("Reviews", "Reviews")">Reviews</a></li>
+
+        @if (User.Identity.IsAuthenticated)
+        {
+          @if (User.IsInRole("Admin"))
+          {
+            <li class="nav-item dropdown" id="adminDropdown">
+              <a href="#" class="nav-link dropdown-toggle" id="adminNav" role="button">Admin</a>
+                <ul class="dropdown-menu" id="adminDropdownMenu">
+                    <li><a class="dropdown-item" href="/Admin/AdminHome">Admin Home</a></li>
+                    <li><a class="dropdown-item" href="/Admin/AdminEventManagement">Manage Events</a></li>
+                    <li><a class="dropdown-item" href="@Url.Action("Index", "Dashboard")">Dashboard</a></li>
+                </ul>
+            </li>
+          }
+          else
+          {
+            <li><a href="/Account/AccountHome">Account Home</a></li>
+          }
+          <li>
+            <form method="post" action="/Account/LogOut">
+              <button type="submit" class="btn-logout">Log Out</button>
+            </form>
+          </li>
+        }
+        else
+        {
+          <li><a href="/Account/LogIn">Log In</a></li>
+          <li><a href="/Account/SignUp">Sign Up</a></li>
+        }
+      </ul>
+    </div>
+  </nav>
+</header>
+    <div class="container">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+  <!-- Footer Section (conditionally hidden) -->
+@if (ViewData["HideFooter"] == null || !(bool)ViewData["HideFooter"])
+{
+    <footer class="footer">
+        <div class="container">
+            <div class="row">
+                <!-- About Section -->
+                <div class="col-md-6">
+                    <h5>About Cape Town Festival</h5>
+                    <p>
+                        Cape Town Festival celebrates community, culture, and creativity.
+                    </p>
+                    <p>&copy; 2025 Cape_Town_Festival. All Rights Reserved.</p>
+                </div>
+
+                <!-- Social Media Section -->
+                <div class="col-md-6 text-center">
+                    <h5>Follow Us</h5>
+                    <ul class="list-unstyled d-flex justify-content-center">
+                        <li class="me-3">
+                            <a href="https://www.instagram.com/lovecapetown/?hl=en" target="_blank" class="text-white">
+                                <i class="fab fa-instagram"></i> Instagram
+                            </a>
+                        </li>
+                        <li>
+                            <a href="https://www.linkedin.com/in/reece-sheldon/" target="_blank" class="text-white">
+                                <i class="fab fa-linkedin"></i> LinkedIn
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Newsletter Subscription -->
+            <div class="row mt-4">
+                <div class="col-md-12 text-center">
+                    <h5>Subscribe to Our Newsletter</h5>
+                    <form id="newsletter-form" class="d-flex justify-content-center">
+                        <input type="email" name="email" class="form-control w-50 me-2" placeholder="Enter your email" required>
+                        <button type="submit" class="btn btn-primary">Subscribe</button>
+                    </form>
+                    <div id="subscription-message" class="mt-3 text-success" style="display: none;">
+                        You have been subscribed to the newsletter successfully!
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+}
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+    @RenderSection("Script", required: false)
+</body>
+</html>
+
+
+
+@section Scripts {
+<script>
+    document.querySelector('#newsletter-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const email = this.email.value;
+
+        fetch('/newsletter/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show the success message
+                document.getElementById('subscription-message').style.display = 'block';
+
+                // Clear the email input field
+                this.email.value = '';
+
+                // Redirect to home/index after 2 seconds
+                setTimeout(() => {
+                    window.location.href = '/home/index';
+                }, 2000);
+            } else {
+                alert('An error occurred while subscribing. Please try again.');
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    });
+
+document.addEventListener("DOMContentLoaded", function () {
+    const adminNav = document.getElementById("adminNav");
+    const adminDropdownMenu = document.getElementById("adminDropdownMenu");
+    let timeout;
+
+    adminNav.addEventListener("mouseenter", function () {
+        clearTimeout(timeout);
+        adminDropdownMenu.style.display = "block";
+        adminDropdownMenu.style.opacity = "1";
+        adminDropdownMenu.style.transform = "translateY(0)";
+    });
+
+    adminDropdownMenu.addEventListener("mouseenter", function () {
+        clearTimeout(timeout);
+    });
+
+    adminNav.addEventListener("mouseleave", function () {
+        timeout = setTimeout(() => {
+            adminDropdownMenu.style.opacity = "0";
+            adminDropdownMenu.style.transform = "translateY(10px)";
+            setTimeout(() => {
+                adminDropdownMenu.style.display = "none";
+            }, 300);
+        }, 300); // Delay before closing
+    });
+
+    adminDropdownMenu.addEventListener("mouseleave", function () {
+        timeout = setTimeout(() => {
+            adminDropdownMenu.style.opacity = "0";
+            adminDropdownMenu.style.transform = "translateY(10px)";
+            setTimeout(() => {
+                adminDropdownMenu.style.display = "none";
+            }, 300);
+        }, 300);
+    });
+});
+</script>
+}

@@ -1,0 +1,34 @@
+@model Cape_Town_Festival.Models.PreviousEventViewModel
+
+@{
+    ViewData["Title"] = "Leave a Review";
+}
+
+<h2>Leave a Review</h2>
+
+<form method="post" action="@Url.Action("SubmitReview", "Account")">
+    <input type="hidden" name="eventId" value="@Model.EventID" />
+
+    <div class="mb-3">
+        <label>Event Name:</label>
+        <input type="text" class="form-control" value="@Model.EventName" readonly>
+    </div>
+
+    <div class="mb-3">
+        <label>Event Date:</label>
+        <input type="text" class="form-control" value="@Model.StartDate.ToString("yyyy-MM-dd HH:mm")" readonly>
+    </div>
+
+    <div class="mb-3">
+        <label>Rating (0-5):</label>
+        <input type="number" name="userRating" class="form-control" step="0.1" min="0" max="5" required>
+    </div>
+
+    <div class="mb-3">
+        <label>Comments:</label>
+        <textarea name="userReview" class="form-control" rows="3" required></textarea>
+    </div>
+
+    <button type="submit" class="btn btn-success">Submit Review</button>
+    <a href="@Url.Action("AccountHome", "Account")" class="btn btn-secondary">Cancel</a>
+</form>

@@ -1,0 +1,20 @@
+@using Cape_Town_Festival.Models
+@model EventViewModel
+@{
+    ViewData["Title"] = "Event Too Far in Advance";
+    var reminderDate = Model.EventDate.ToDateTime().ToString("yyyyMMddTHHmmssZ"); // Google Calendar format
+    var eventName = Model.EventName;
+    var eventDescription = $"Reminder to book your RSVP for {eventName}";
+    var calendarLink = $"https://calendar.google.com/calendar/render?action=TEMPLATE&text={eventName}&dates={reminderDate}/{reminderDate}&details={eventDescription}";
+}
+
+<div class="container text-center mt-5">
+    <h2>Event Too Far in Advance</h2>
+    <p>we glad to hear you want to book so far in advance, but unfortantely it is too early to book your RSVP.</p>
+    <p>You can set a calendar reminder so you don’t forget to book later!</p>
+ 
+    
+    <a href="@calendarLink" target="_blank" class="btn btn-primary">Add Reminder to Calendar</a>
+    <br><br>
+    <a href="/Events" class="btn btn-secondary">Back to Events</a>
+</div>

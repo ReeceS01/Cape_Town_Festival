@@ -1,0 +1,211 @@
+@using Cape_Town_Festival.Models
+
+@{
+    ViewData["Title"] = "Event Details";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var eventDetails = ViewBag.Event as Dictionary<string, object> ?? new Dictionary<string, object>();
+
+    // Prevents null errors by ensuring the dictionary has data
+    if (eventDetails.Count == 0)
+    {
+        <h2>Event Not Found</h2>
+        return;
+    }
+
+    var eventDate = eventDetails.ContainsKey("EventDate") 
+        ? ((Google.Cloud.Firestore.Timestamp)eventDetails["EventDate"]).ToDateTime().ToLocalTime() 
+        : DateTime.Now;
+
+    var displayDate = eventDate.ToString("dddd, dd MMMM yyyy");  // Shows only date
+    var displayTime = eventDate.ToString("h:mm tt");  // Shows only time
+
+    int maxAttendees = eventDetails.ContainsKey("EventMaxAttendees") 
+        ? Convert.ToInt32(eventDetails["EventMaxAttendees"]) 
+        : 0;
+
+    int rsvps = eventDetails.ContainsKey("EventRSVPs") 
+        ? Convert.ToInt32(eventDetails["EventRSVPs"]) 
+        : 0;
+
+    int seatsLeft = maxAttendees - rsvps;
+    bool isAlmostSoldOut = seatsLeft < 10;
+}
+
+<div class="learn-more-container">
+    <h1>@eventDetails["EventName"]</h1>
+
+    <div class="event-info">
+        <div class="event-image-container">
+            <img src="@eventDetails["EventImageURL"]" alt="@eventDetails["EventName"]" class="event-image">
+            @if (isAlmostSoldOut)
+            {
+                <div class="sold-out-badge">Almost Sold Out!</div>
+            }
+        </div>
+
+        <p><strong>Date:</strong> @displayDate</p>
+        <p><strong>Time:</strong> @displayTime</p>
+        <p><strong>Location:</strong> @eventDetails["EventLocation"]</p>
+        <p><strong>Category:</strong> @eventDetails["EventCategory"]</p>
+        <p><strong>Description:</strong> @eventDetails["EventDescription"]</p>
+        <p><strong>Event Capacity:</strong> 
+            <span class="seats @(seatsLeft <= 5 ? "low-seats" : "available-seats")">
+                @(seatsLeft > 0 ? seatsLeft : "Fully Booked")
+            </span>
+        </p>
+
+        <!-- Google Maps Embed API -->
+        <iframe
+            width="100%"
+            height="300"
+            frameborder="0"
+            style="border:0; border-radius: 10px;"
+            referrerpolicy="no-referrer-when-downgrade"
+            src="https://www.google.com/maps/embed/v1/place?key=AIzaSyBybbDQ6fPw8ujyT_dYj0s2lhX9lKTfnYk&q=@eventDetails["EventLocation"]"
+            allowfullscreen>
+        </iframe>
+
+        <!-- Star Rating -->
+        <div class="star-rating">
+            @{
+                int fullStars = eventDetails.ContainsKey("EventRatings") ? (int)Convert.ToDouble(eventDetails["EventRatings"]) : 0;
+                bool hasHalfStar = eventDetails.ContainsKey("EventRatings") && (Convert.ToDouble(eventDetails["EventRatings"]) - fullStars >= 0.5);
+            }
+
+            @for (int i = 1; i <= 5; i++)
+            {
+                if (i <= fullStars)
+                {
+                    <span class="star">&#9733;</span>
+                }
+                else if (hasHalfStar && i == fullStars + 1)
+                {
+                    <span class="star half">&#9733;</span>
+                    hasHalfStar = false;
+                }
+                else
+                {
+                    <span class="star empty">&#9733;</span>
+                }
+            }
+            <span class="rating-text">(@eventDetails["EventRatings"] / 5)</span>
+        </div>
+
+        <!-- Return to Events Button -->
+        <a href="@Url.Action("EventsDynamic", "Events")" class="btn-back">
+            ⬅ Return to All Events
+        </a>
+
+        <!-- RSVP Button -->
+        <a href="@Url.Action("Form", "RSVP", new { 
+                eventId = eventDetails["EventID"],
+                eventName = eventDetails["EventName"],
+                startDate = eventDate.ToString("yyyy-MM-dd HH:mm:ss"),
+                category = eventDetails["EventCategory"],
+                location = eventDetails["EventLocation"]
+                    })" class="btn-rsvp">
+            RSVP Now
+        </a>
+    </div>
+</div>
+
+@section Styles{
+<style>
+/* Learn More Page Styles */
+.learn-more-container {
+    max-width: 800px;
+    margin: 50px auto;
+    background: white;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Event Image with Badge */
+.event-image-container {
+    position: relative;
+}
+
+.event-image {
+    width: 100%;
+    height: 300px;
+    object-fit: cover;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+/* Sold Out Badge */
+.sold-out-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: red;
+    color: white;
+    padding: 5px 10px;
+    font-weight: bold;
+    border-radius: 5px;
+}
+
+/* Google Maps */
+iframe {
+    width: 100%;
+    height: 300px;
+    margin-top: 15px;
+    border-radius: 10px;
+}
+
+/* Buttons */
+.btn-back, .btn-rsvp {
+    display: block;
+    width: 100%;
+    text-align: center;
+    padding: 12px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    text-decoration: none;
+    border-radius: 6px;
+    margin-top: 15px;
+}
+
+/* Back to Events Button (Grey) */
+.btn-back {
+    background-color: #6c757d;
+    color: white;
+}
+
+.btn-back:hover {
+    background-color: #5a6268;
+}
+
+/* RSVP Button */
+.btn-rsvp {
+    background-color: #28a745;
+    color: white;
+}
+
+.btn-rsvp:hover {
+    background-color: #1e7e34;
+}
+
+/* Star Rating */
+.star-rating {
+    display: flex;
+    justify-content: center;
+    font-size: 24px;
+    color: gold;
+    margin-top: 10px;
+}
+
+.star.empty {
+    color: lightgray;
+}
+
+.star.half::before {
+    content: "\2605";
+    color: gold;
+    width: 50%;
+    overflow: hidden;
+}
+</style>
+}
