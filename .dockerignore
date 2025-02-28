@@ -1,0 +1,12 @@
+# Ignore build artifacts
+bin/
+obj/
+*.pdb
+
+# Ignore local config files
+appsettings.Development.json
+*.log
+
+# Ignore system files
+.DS_Store
+*.tmp
